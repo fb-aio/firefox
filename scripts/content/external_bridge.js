@@ -1,5 +1,5 @@
 (() => {
-  // src/content/external_bridge.js
+  // scripts/content/external_bridge.js
   var isFirefox = typeof browser !== "undefined" && typeof browser.runtime !== "undefined";
   if (isFirefox) {
     const MESSAGE_TYPE = "FBAIO_EXTERNAL_MESSAGE";

@@ -9,192 +9,7 @@
       __defProp(target, name, { get: all[name], enumerable: true });
   };
 
-  // src/utils/index.js
-  var utils_exports = {};
-  __export(utils_exports, {
-    Storage: () => Storage,
-    convertBlobToBase64: () => convertBlobToBase64,
-    customFetch: () => customFetch,
-    getCurrentTab: () => getCurrentTab,
-    getExtensionId: () => getExtensionId,
-    getFBAIODashboard: () => getFBAIODashboard,
-    getUserId: () => getUserId,
-    hasUserId: () => hasUserId,
-    mergeObject: () => mergeObject,
-    runFunc: () => runFunc,
-    runScriptInCurrentTab: () => runScriptInCurrentTab,
-    runScriptInTab: () => runScriptInTab,
-    setUserId: () => setUserId,
-    sleep: () => sleep
-  });
-  function runFunc(fnPath = "", params = [], global = chrome) {
-    return new Promise((resolve) => {
-      let fn = fnPath?.startsWith("chrome") ? browserApi : global;
-      fnPath.split(".").forEach((part) => {
-        fn = fn?.[part] || fn;
-      });
-      let hasCallback = false;
-      let _params = params.map((p) => {
-        if (p === "callback") {
-          hasCallback = true;
-          return resolve;
-        }
-        return p;
-      });
-      if (typeof fn !== "function") return resolve(fn);
-      try {
-        let res = fn(..._params);
-        if (!hasCallback) {
-          if (typeof res?.then === "function") {
-            res.then?.(resolve);
-          } else {
-            resolve(res);
-          }
-        }
-      } catch (e) {
-        console.log("ERROR runFunc: ", e);
-        resolve(null);
-      }
-    });
-  }
-  function getExtensionId() {
-    return browserApi.runtime.id;
-  }
-  async function hasUserId() {
-    return !!await Storage.get("userId");
-  }
-  async function getUserId() {
-    if (!CACHED.userID) {
-      CACHED.userID = await Storage.get("userId");
-    }
-    if (!CACHED.userID) {
-      await setUserId();
-    }
-    return CACHED.userID;
-  }
-  async function setUserId(uid) {
-    if (!uid) {
-      uid = (await browserApi.cookies.get({
-        url: "https://www.facebook.com",
-        name: "c_user"
-      }))?.value || (/* @__PURE__ */ new Date()).getTime();
-    }
-    CACHED.userID = uid;
-    await Storage.set("userId", uid);
-  }
-  async function getCurrentTab() {
-    let tabs = await browserApi.tabs.query({ active: true, currentWindow: true });
-    return tabs?.[0];
-  }
-  async function customFetch(url, options) {
-    try {
-      if (typeof options?.body === "string" && options.body.startsWith("fbaio-formData:")) {
-        let body2 = options.body.replace("fbaio-formData:", "");
-        body2 = JSON.parse(body2);
-        options.body = new FormData();
-        for (const [key, value] of Object.entries(body2)) {
-          options.body.append(key, value);
-        }
-      }
-      const res = await fetch(url, options);
-      let body;
-      try {
-        if (res.headers.get("Content-Type").startsWith("text/")) {
-          body = await res.clone().text();
-        } else if (res.headers.get("Content-Type").startsWith("application/json")) {
-          body = await res.clone().json();
-        } else {
-          const blob = await res.clone().blob();
-          body = await convertBlobToBase64(blob);
-        }
-      } catch (e) {
-        body = await res.clone().text();
-      }
-      const data = {
-        headers: Object.fromEntries(res.headers),
-        ok: res.ok,
-        redirected: res.redirected,
-        status: res.status,
-        statusText: res.statusText,
-        type: res.type,
-        url: res.url,
-        body
-      };
-      return data;
-    } catch (e) {
-      console.log("Fetch failed:", e);
-      return null;
-    }
-  }
-  var isFirefox, browserApi, CACHED, Storage, runScriptInCurrentTab, runScriptInTab, mergeObject, sleep, getFBAIODashboard, convertBlobToBase64;
-  var init_utils = __esm({
-    "src/utils/index.js"() {
-      isFirefox = typeof browser !== "undefined" && browser.runtime;
-      browserApi = isFirefox ? browser : chrome;
-      CACHED = {
-        userID: null
-      };
-      Storage = {
-        set: async (key, value) => {
-          await browserApi.storage.local.set({ [key]: value });
-          return value;
-        },
-        get: async (key, defaultValue) => {
-          let result = await browserApi.storage.local.get([key]);
-          return result[key] || defaultValue;
-        },
-        remove: async (key) => {
-          return await browserApi.storage.local.remove(key);
-        }
-      };
-      runScriptInCurrentTab = async (func, args, world = "MAIN") => {
-        const tab = await getCurrentTab();
-        return await runScriptInTab({ func, args, target: { tabId: tab.id }, world });
-      };
-      runScriptInTab = async (config = {}) => {
-        return new Promise((resolve, reject) => {
-          browserApi.scripting.executeScript(
-            mergeObject(
-              {
-                world: "MAIN",
-                injectImmediately: true
-              },
-              config
-            ),
-            (injectionResults) => {
-              if (browserApi.runtime.lastError) {
-                console.error(browserApi.runtime.lastError);
-                reject(browserApi.runtime.lastError);
-              } else resolve(injectionResults?.find?.((_) => _.result)?.result);
-            }
-          );
-        });
-      };
-      mergeObject = (...objs) => {
-        let res = {};
-        for (let obj of objs) for (let key in obj) if (obj[key]) res[key] = obj[key];
-        return res;
-      };
-      sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-      getFBAIODashboard = () => {
-        return "https://fb-aio.github.io/entry/?rand=" + Math.random() * 1e4;
-      };
-      convertBlobToBase64 = (blob) => new Promise((resolve) => {
-        const reader = new FileReader();
-        reader.readAsDataURL(blob);
-        reader.onloadend = () => {
-          const base64data = reader.result;
-          resolve(base64data);
-        };
-        reader.onerror = (error) => {
-          console.log("Error: ", error);
-          resolve(null);
-        };
-      });
-    }
-  });
-
-  // src/content/helper/helper.js
+  // scripts/content/helper/helper.js
   var helper_exports = {};
   __export(helper_exports, {
     closest: () => closest,
@@ -205,7 +20,7 @@
     downloadUrl: () => downloadUrl,
     executeScript: () => executeScript,
     getExtStorage: () => getExtStorage,
-    getFBAIODashboard: () => getFBAIODashboard2,
+    getFBAIODashboard: () => getFBAIODashboard,
     getNumberFormatter: () => getNumberFormatter,
     getTrustedPolicy: () => getTrustedPolicy,
     getURL: () => getURL,
@@ -223,7 +38,7 @@
     sanitizeName: () => sanitizeName,
     sendToContentScript: () => sendToContentScript,
     setExtStorage: () => setExtStorage,
-    sleep: () => sleep2
+    sleep: () => sleep
   });
   function sendToContentScript(event, data) {
     return new Promise((resolve, reject) => {
@@ -352,7 +167,7 @@
     });
     return noti;
   }
-  function sleep2(ms) {
+  function sleep(ms) {
     return new Promise((resolve) => setTimeout(resolve, ms));
   }
   function getNumberFormatter(optionSelect, locale) {
@@ -619,33 +434,73 @@
       });
     });
   }
-  var numberFormatCached, getFBAIODashboard2;
+  var numberFormatCached, getFBAIODashboard;
   var init_helper = __esm({
-    "src/content/helper/helper.js"() {
+    "scripts/content/helper/helper.js"() {
       numberFormatCached = {};
-      getFBAIODashboard2 = () => {
+      getFBAIODashboard = () => {
         return "https://fb-aio.github.io/entry/?rand=" + Math.random() * 1e4;
       };
     }
   });
 
-  // src/content/listener.js
+  // scripts/content/fb_addDownloadVideoBtn.js
   (async () => {
-    console.log("FB AIO: listener script INJECTED");
-    window.addEventListener("message", async (event) => {
-      const { from, origin, uuid, fnPath, params } = event.data || {};
-      if (uuid && from === "fbaio" && (!origin || origin === location.origin)) {
-        console.log("Message received:", event);
-        const utils = await Promise.resolve().then(() => (init_utils(), utils_exports));
-        const helpers = await Promise.resolve().then(() => (init_helper(), helper_exports));
-        const GLOBAL = {
-          window,
-          utils,
-          helpers,
-          fetch: (url, options) => fetch(url, options || {}).then((res) => res.text()).catch((e) => null)
+    console.log("FB AIO: FB add download video button ENABLED");
+    const { onElementsAdded: onElementsAdded2, closest: closest2, getFBAIODashboard: getFBAIODashboard2 } = await Promise.resolve().then(() => (init_helper(), helper_exports));
+    function getVideoId(videoEle) {
+      try {
+        let key = "";
+        for (let k in videoEle.parentElement) {
+          if (k.startsWith("__reactProps")) {
+            key = k;
+            break;
+          }
+        }
+        const props = videoEle.parentElement[key].children.props;
+        return props.videoFBID || props.coreVideoPlayerMetaData?.videoFBID;
+      } catch (e) {
+        console.log("ERROR on get videoFBID: ", e);
+        return null;
+      }
+    }
+    onElementsAdded2("video", (videos) => {
+      const className = "fb-aio-video-download-btn";
+      for (let video of videos) {
+        const container = closest2(video, "[data-video-id]") || closest2(video, '[data-visualcompletion="ignore"]') || video.parentElement;
+        if (container.querySelector(`.${className}`)) continue;
+        let btn = document.createElement("button");
+        btn.className = className;
+        btn.textContent = "\u2B07\uFE0F";
+        btn.title = "FB AIO: Download video";
+        btn.style.cssText = `
+        position: absolute;
+        top: 60px;
+        right: 10px;
+        width: 40px;
+        height: 40px;
+        background-color: #333;
+        color: #fff;
+        border-radius: 5px;
+        border: none;
+        opacity: 0.3;
+        cursor: pointer;
+        z-index: 2147483647;`;
+        btn.addEventListener("mouseenter", () => {
+          btn.style.opacity = 1;
+        });
+        btn.addEventListener("mouseleave", () => {
+          btn.style.opacity = 0.5;
+        });
+        btn.onclick = (e) => {
+          const id = getVideoId(video);
+          window.open(
+            getFBAIODashboard2() + `/#/video-downloader?url=https://www.fb.com/videos/${id}`,
+            "_blank"
+          );
+          e.stopPropagation();
         };
-        const data = await utils.runFunc(fnPath, params, GLOBAL);
-        event.source.postMessage({ uuid, data }, event.origin);
+        container.appendChild(btn);
       }
     });
   })();

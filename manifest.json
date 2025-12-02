@@ -12,7 +12,7 @@
     "128": "assets/icon128.png"
   },
   "action": {
-    "default_popup": "./src/popup/index.html",
+    "default_popup": "./scripts/popup/index.html",
     "default_icon": "./assets/icon32.png"
   },
   "permissions": [
@@ -27,27 +27,27 @@
   ],
   "optional_permissions": ["tabs"],
   "background": {
-    "scripts": ["./src/background/index.js"],
+    "scripts": ["./scripts/background/index.js"],
     "type": "module"
   },
   "host_permissions": ["*://*/*", "<all_urls>"],
   "content_scripts": [
     {
       "matches": ["*://*/*"],
-      "js": ["./src/content/content.js"],
+      "js": ["./scripts/content/content.js"],
       "run_at": "document_start",
       "all_frames": true
     },
     {
       "matches": ["*://*/*"],
-      "js": ["./src/content/listener.js"],
+      "js": ["./scripts/content/listener.js"],
       "run_at": "document_start",
       "all_frames": true,
       "world": "MAIN"
     },
     {
       "matches": ["*://*/*"],
-      "js": ["./src/content/external_bridge.js"],
+      "js": ["./scripts/content/external_bridge.js"],
       "run_at": "document_start"
     }
   ],
@@ -62,7 +62,7 @@
   },
   "web_accessible_resources": [
     {
-      "resources": ["src/*"],
+      "resources": ["scripts/*"],
       "matches": ["<all_urls>"]
     }
   ],

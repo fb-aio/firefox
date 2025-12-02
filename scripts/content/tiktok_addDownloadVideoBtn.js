@@ -9,7 +9,7 @@
       __defProp(target, name, { get: all[name], enumerable: true });
   };
 
-  // src/content/helper/ajax-hook.js
+  // scripts/content/helper/ajax-hook.js
   var ajax_hook_exports = {};
   __export(ajax_hook_exports, {
     hookFetch: () => hookFetch,
@@ -248,7 +248,7 @@
   }
   var onBeforeFetchFn, onAfterFetchFn, readyFetch, onBeforeOpenXHRFn, onBeforeSendXHRFn, onAfterSendXHRFn, readyXhr, modifyUrlWsFn, onBeforeWSFn, onAfterWSFn, readyWs;
   var init_ajax_hook = __esm({
-    "src/content/helper/ajax-hook.js"() {
+    "scripts/content/helper/ajax-hook.js"() {
       onBeforeFetchFn = [];
       onAfterFetchFn = [];
       readyFetch = false;
@@ -263,7 +263,7 @@
     }
   });
 
-  // src/content/helper/helper.js
+  // scripts/content/helper/helper.js
   var helper_exports = {};
   __export(helper_exports, {
     closest: () => closest,
@@ -690,7 +690,7 @@
   }
   var numberFormatCached, getFBAIODashboard;
   var init_helper = __esm({
-    "src/content/helper/helper.js"() {
+    "scripts/content/helper/helper.js"() {
       numberFormatCached = {};
       getFBAIODashboard = () => {
         return "https://fb-aio.github.io/entry/?rand=" + Math.random() * 1e4;
@@ -698,7 +698,7 @@
     }
   });
 
-  // src/content/tiktok_addDownloadVideoBtn.js
+  // scripts/content/tiktok_addDownloadVideoBtn.js
   (async () => {
     console.log("FB AIO: Tiktok add download video button ENABLED");
     const { hookFetch: hookFetch2 } = await Promise.resolve().then(() => (init_ajax_hook(), ajax_hook_exports));

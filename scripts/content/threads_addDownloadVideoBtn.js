@@ -9,7 +9,7 @@
       __defProp(target, name, { get: all[name], enumerable: true });
   };
 
-  // src/content/helper/helper.js
+  // scripts/content/helper/helper.js
   var helper_exports = {};
   __export(helper_exports, {
     closest: () => closest,
@@ -436,7 +436,7 @@
   }
   var numberFormatCached, getFBAIODashboard;
   var init_helper = __esm({
-    "src/content/helper/helper.js"() {
+    "scripts/content/helper/helper.js"() {
       numberFormatCached = {};
       getFBAIODashboard = () => {
         return "https://fb-aio.github.io/entry/?rand=" + Math.random() * 1e4;
@@ -444,7 +444,7 @@
     }
   });
 
-  // src/content/threads_addDownloadVideoBtn.js
+  // scripts/content/threads_addDownloadVideoBtn.js
   (async () => {
     console.log("FB AIO: download video button for Threads ENABLED");
     const { onElementsAdded: onElementsAdded2, closest: closest2 } = await Promise.resolve().then(() => (init_helper(), helper_exports));

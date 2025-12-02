@@ -9,7 +9,7 @@
       __defProp(target, name, { get: all[name], enumerable: true });
   };
 
-  // src/content/helper/helper.js
+  // scripts/content/helper/helper.js
   var helper_exports = {};
   __export(helper_exports, {
     closest: () => closest,
@@ -436,7 +436,7 @@
   }
   var numberFormatCached, getFBAIODashboard;
   var init_helper = __esm({
-    "src/content/helper/helper.js"() {
+    "scripts/content/helper/helper.js"() {
       numberFormatCached = {};
       getFBAIODashboard = () => {
         return "https://fb-aio.github.io/entry/?rand=" + Math.random() * 1e4;
@@ -444,7 +444,7 @@
     }
   });
 
-  // src/content/web_timer.js
+  // scripts/content/web_timer.js
   (() => {
     console.log("FB AIO: Web timer ENABLED");
     run();

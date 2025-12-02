@@ -9,7 +9,7 @@
       __defProp(target, name, { get: all[name], enumerable: true });
   };
 
-  // src/content/helper/helper.js
+  // scripts/content/helper/helper.js
   var helper_exports = {};
   __export(helper_exports, {
     closest: () => closest,
@@ -436,7 +436,7 @@
   }
   var numberFormatCached, getFBAIODashboard;
   var init_helper = __esm({
-    "src/content/helper/helper.js"() {
+    "scripts/content/helper/helper.js"() {
       numberFormatCached = {};
       getFBAIODashboard = () => {
         return "https://fb-aio.github.io/entry/?rand=" + Math.random() * 1e4;
@@ -444,57 +444,54 @@
     }
   });
 
-  // src/content/fb_addVideoControlBtn.js
-  (async () => {
-    console.log("FB AIO: FB add download video button ENABLED");
-    const { onElementsAdded: onElementsAdded2, closest: closest2 } = await Promise.resolve().then(() => (init_helper(), helper_exports));
-    onElementsAdded2("video", (videos) => {
-      const className = "fb-aio-video-control-btn";
-      for (let video of videos) {
-        const container = closest2(video, "[data-video-id]") || closest2(video, '[data-visualcompletion="ignore"]') || video.parentElement;
-        if (container.querySelector(`.${className}`)) continue;
-        const overlay = closest2(video, "[data-instancekey]");
-        const overlay2 = closest2(video, "[data-video-id]")?.parentElement?.nextElementSibling;
-        let btn = document.createElement("button");
-        btn.className = className;
-        btn.textContent = "\u{1F579}\uFE0F";
-        btn.title = "FB AOI: Toggle video controls";
-        btn.style.cssText = `
-          position: absolute;
-          top: 60px;
-          right: 55px;
-          width: 40px;
-          height: 40px;
-          background-color: #333;
-          color: #fff;
-          border-radius: 5px;
-          border: none;
-          cursor: pointer;
-          opacity: 0.3;
-          z-index: 2147483647;`;
-        btn.addEventListener("mouseenter", () => {
-          btn.style.opacity = 1;
-        });
-        btn.addEventListener("mouseleave", () => {
-          btn.style.opacity = 0.5;
-        });
-        btn.onclick = (e) => {
-          console.log(video, overlay);
-          if (video.hasAttribute("controls")) {
-            video.removeAttribute("controls");
-            [overlay, overlay2].forEach((el) => {
-              if (el) el.style.display = "block";
-            });
-          } else {
-            video.setAttribute("controls", "");
-            [overlay, overlay2].forEach((el) => {
-              if (el) el.style.display = "none";
-            });
-          }
-          e.stopPropagation();
-        };
-        container.appendChild(btn);
+  // scripts/content/block_open_urls.js
+  (() => {
+    console.log("FB AIO: Block open urls ENABLED");
+    let regexs = [];
+    window.addEventListener("click", (event) => {
+      if (event.target.tagName === "A") {
+        confirmOpen(event.target.href, event);
       }
     });
+    window.fbaio_originalOpen = window.fbaio_originalOpen || window.open;
+    window.open = (url, target, features) => {
+      const confirmed = confirmOpen(url, null);
+      return confirmed ? window.fbaio_originalOpen?.(url, target, features) : null;
+    };
+    function confirmOpen(url, event) {
+      const inBlacklist = regexs.some((_) => _.test(url));
+      if (!inBlacklist) return true;
+      const value = prompt(
+        "FB AIO: Ads link detected. Are you sure you want to open this link?",
+        url
+      );
+      const confirmed = value != null;
+      if (!confirmed && event) {
+        event.preventDefault();
+        event.stopPropagation?.();
+        event.stopImmediatePropagation?.();
+      }
+      return confirmed;
+    }
+    (async () => {
+      const { getExtStorage: getExtStorage2 } = await Promise.resolve().then(() => (init_helper(), helper_exports));
+      regexs = (await getExtStorage2("block_open_urls_regexs") || []).map((_) => {
+        try {
+          return new RegExp(_);
+        } catch (e) {
+          return null;
+        }
+      }).filter((_) => _ != null);
+      console.log("FB AIO: block_open_urls_regexs", regexs);
+      if (regexs.some((_) => _.test(window.location.href))) {
+        const confirmed = confirm(
+          "FB AIO: Ads link detected.\n\nConfirm: to close website.\nCancel: to continue browsing this website"
+        );
+        if (confirmed) {
+          window.stop();
+          window.close();
+        }
+      }
+    })();
   })();
 })();

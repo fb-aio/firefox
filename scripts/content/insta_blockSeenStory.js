@@ -1,12 +1,6 @@
 (() => {
   var __defProp = Object.defineProperty;
   var __getOwnPropNames = Object.getOwnPropertyNames;
-  var __require = /* @__PURE__ */ ((x) => typeof require !== "undefined" ? require : typeof Proxy !== "undefined" ? new Proxy(x, {
-    get: (a, b) => (typeof require !== "undefined" ? require : a)[b]
-  }) : x)(function(x) {
-    if (typeof require !== "undefined") return require.apply(this, arguments);
-    throw Error('Dynamic require of "' + x + '" is not supported');
-  });
   var __esm = (fn, res) => function __init() {
     return fn && (res = (0, fn[__getOwnPropNames(fn)[0]])(fn = 0)), res;
   };
@@ -15,7 +9,7 @@
       __defProp(target, name, { get: all[name], enumerable: true });
   };
 
-  // src/content/helper/helper.js
+  // scripts/content/helper/helper.js
   var helper_exports = {};
   __export(helper_exports, {
     closest: () => closest,
@@ -442,7 +436,7 @@
   }
   var numberFormatCached, getFBAIODashboard;
   var init_helper = __esm({
-    "src/content/helper/helper.js"() {
+    "scripts/content/helper/helper.js"() {
       numberFormatCached = {};
       getFBAIODashboard = () => {
         return "https://fb-aio.github.io/entry/?rand=" + Math.random() * 1e4;
@@ -450,7 +444,7 @@
     }
   });
 
-  // src/content/helper/ajax-hook.js
+  // scripts/content/helper/ajax-hook.js
   var ajax_hook_exports = {};
   __export(ajax_hook_exports, {
     hookFetch: () => hookFetch,
@@ -689,7 +683,7 @@
   }
   var onBeforeFetchFn, onAfterFetchFn, readyFetch, onBeforeOpenXHRFn, onBeforeSendXHRFn, onAfterSendXHRFn, readyXhr, modifyUrlWsFn, onBeforeWSFn, onAfterWSFn, readyWs;
   var init_ajax_hook = __esm({
-    "src/content/helper/ajax-hook.js"() {
+    "scripts/content/helper/ajax-hook.js"() {
       onBeforeFetchFn = [];
       onAfterFetchFn = [];
       readyFetch = false;
@@ -704,219 +698,19 @@
     }
   });
 
-  // src/content/helper/fb-helper.js
-  var fb_helper_exports = {};
-  __export(fb_helper_exports, {
-    TargetType: () => TargetType,
-    fetchGraphQl: () => fetchGraphQl,
-    getEntityAbout: () => getEntityAbout,
-    getFbdtsg: () => getFbdtsg,
-    wrapGraphQlParams: () => wrapGraphQlParams
-  });
-  function wrapGraphQlParams(params) {
-    const formBody = [];
-    for (const property in params) {
-      const encodedKey = encodeURIComponent(property);
-      const value = typeof params[property] === "string" ? params[property] : JSON.stringify(params[property]);
-      const encodedValue = encodeURIComponent(value);
-      formBody.push(encodedKey + "=" + encodedValue);
-    }
-    return formBody.join("&");
-  }
-  async function fetchGraphQl(params, fb_dtsg) {
-    let form;
-    fb_dtsg = fb_dtsg || await getFbdtsg();
-    if (typeof params === "string")
-      form = "fb_dtsg=" + encodeURIComponent(fb_dtsg) + "&q=" + encodeURIComponent(params);
-    else
-      form = wrapGraphQlParams({
-        dpr: 1,
-        __a: 1,
-        __aaid: 0,
-        __ccg: "GOOD",
-        __comet_req: 15,
-        // reduce a lot of data in extensions response
-        server_timestamps: true,
-        fb_dtsg,
-        ...params
-      });
-    let res = await fetch(
-      "https://" + (location.hostname.includes("facebook.com") ? location.hostname : "www.facebook.com") + "/api/graphql/",
-      {
-        body: form,
-        method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        credentials: "include"
-      }
-    );
-    let json = await res.text();
-    return json;
-  }
-  async function getFbdtsg() {
-    let methods = [
-      () => __require("DTSGInitData").token,
-      () => __require("DTSG").getToken(),
-      () => {
-        return RegExp(/"DTSGInitialData",\[],{"token":"(.+?)"/).exec(
-          document.documentElement.innerHTML
-        )?.[1];
-      },
-      async () => {
-        let res = await fetch("https://mbasic.facebook.com/photos/upload/");
-        let text = await res.text();
-        return RegExp(/name="fb_dtsg" value="(.*?)"/).exec(text)?.[1];
-      },
-      async () => {
-        let res = await fetch("https://m.facebook.com/home.php", {
-          headers: {
-            Accept: "text/html"
-          }
-        });
-        let text = await res.text();
-        return RegExp(/"dtsg":{"token":"([^"]+)"/).exec(text)?.[1] || RegExp(/"name":"fb_dtsg","value":"([^"]+)/).exec(text)?.[1];
-      },
-      () => __require("DTSG_ASYNC").getToken()
-      // TODO: trace xem tại sao method này trả về cấu trúc khác 2 method trên
-    ];
-    for (let m of methods) {
-      try {
-        let d = await m();
-        if (d) return d;
-      } catch (e) {
-      }
-    }
-    return null;
-  }
-  async function getEntityAbout(entityID, context = "DEFAULT") {
-    const { deepFind: deepFind2 } = await Promise.resolve().then(() => (init_helper(), helper_exports));
-    let res = await fetchGraphQl({
-      fb_api_req_friendly_name: "CometHovercardQueryRendererQuery",
-      variables: {
-        actionBarRenderLocation: "WWW_COMET_HOVERCARD",
-        context,
-        entityID,
-        // includeTdaInfo: false,
-        scale: 2
-      },
-      // doc_id: '7257793420991802'
-      doc_id: "27838033792508877"
-    });
-    const json = JSON.parse(res);
-    const node = json?.data?.node;
-    if (!node) return null;
-    const typeText = node.__typename.toLowerCase();
-    if (!Object.values(TargetType).includes(typeText)) return null;
-    const card = node.comet_hovercard_renderer[typeText];
-    let type;
-    if (typeText === "page") type = TargetType.Page;
-    else if (typeText !== "user") type = TargetType.Group;
-    else if (card.profile_plus_transition_path?.startsWith("PAGE") || card.profile_plus_transition_path === "ADDITIONAL_PROFILE_CREATION")
-      type = TargetType.Page;
-    else type = TargetType.User;
-    const uid = node.id || card.id;
-    return {
-      type,
-      pageId: deepFind2(card, "delegate_page_id"),
-      uid,
-      name: card.name,
-      avatar: card.profile_picture.uri,
-      url: card.profile_url || card.url,
-      raw: json
-    };
-  }
-  var TargetType;
-  var init_fb_helper = __esm({
-    "src/content/helper/fb-helper.js"() {
-      TargetType = {
-        User: "user",
-        Page: "page",
-        Group: "group",
-        IGUser: "ig_user",
-        TikTokUser: "tiktok_user",
-        ThreadsUser: "threads_user"
-      };
-    }
-  });
-
-  // src/content/fb_showTotalPostReactions.js
+  // scripts/content/insta_blockSeenStory.js
   (async () => {
-    console.log("FB AIO: FB show total post reactions ENABLED");
+    console.log("FB AIO: Insta block seen story ENABLED");
     const { notify: notify2 } = await Promise.resolve().then(() => (init_helper(), helper_exports));
     const { hookXHR: hookXHR2 } = await Promise.resolve().then(() => (init_ajax_hook(), ajax_hook_exports));
-    const { fetchGraphQl: fetchGraphQl2, getFbdtsg: getFbdtsg2 } = await Promise.resolve().then(() => (init_fb_helper(), fb_helper_exports));
-    const { getNumberFormatter: getNumberFormatter2 } = await Promise.resolve().then(() => (init_helper(), helper_exports));
-    const CACHED = {};
-    const ReactionId = {
-      "\u{1F44D}": "1635855486666999",
-      "\u{1F496}": "1678524932434102",
-      "\u{1F970}": "613557422527858",
-      "\u{1F606}": "115940658764963",
-      "\u{1F632}": "478547315650144",
-      "\u{1F614}": "908563459236466",
-      "\u{1F621}": "444813342392137"
-    };
-    const getPostReactionsCount = async (id, reactionId) => {
-      const res = await fetchGraphQl2(
-        {
-          fb_api_caller_class: "RelayModern",
-          fb_api_req_friendly_name: "CometUFIReactionIconTooltipContentQuery",
-          variables: {
-            feedbackTargetID: id,
-            reactionID: reactionId
-          },
-          doc_id: "6235145276554312"
-        },
-        await getFbdtsg2()
-      );
-      const json = JSON.parse(res || "{}");
-      return json?.data?.feedback?.reactors?.count || 0;
-    };
-    const getTotalPostReactionCount = async (id) => {
-      if (CACHED[id] === "loading") return;
-      const { setText, closeAfter } = notify2({
-        msg: "\u2764\uFE0F FB AIO: Counting reactions...",
-        duration: 1e4
-      });
-      const numberFormater = getNumberFormatter2("standard");
-      let res;
-      if (CACHED[id]) {
-        res = CACHED[id];
-      } else {
-        CACHED[id] = "loading";
-        res = {
-          total: 0,
-          each: {}
-        };
-        for (let [name, reactionId] of Object.entries(ReactionId)) {
-          const count = await getPostReactionsCount(id, reactionId);
-          res.total += count;
-          res.each[name] = count;
-          setText(
-            `\u2764\uFE0F FB AIO: Counting reactions ${name}... Total: ${numberFormater.format(
-              res.total
-            )}`
-          );
-        }
-        CACHED[id] = res;
-      }
-      setText(
-        "<p style='color:white;font-size:20px;padding:0;margin:0'>Total " + numberFormater.format(res.total) + " reactions.<br/>Includes " + Object.entries(res.each).filter(([key, value]) => value > 0).map(([key, value]) => `${numberFormater.format(value)}${key}`).join(", ") + "</p>"
-      );
-      closeAfter(1e4);
-    };
     hookXHR2({
-      onAfterSend: ({ method, url, async, user, password }, dataSend, response) => {
-        let str = dataSend?.toString?.() || "";
-        if (str.includes("CometUFIReactionsCountTooltipContentQuery") || str.includes("CometUFIReactionIconTooltipContentQuery")) {
-          try {
-            const json = JSON.parse(response);
-            if (json?.data?.feedback?.reaction_display_config?.reaction_display_strategy == "HIDE_COUNTS") {
-              const id = json.data.feedback.id;
-              getTotalPostReactionCount(id);
-            }
-          } catch (err) {
-            console.log(err);
-          }
+      onBeforeSend: ({ method, url, async, user, password }, dataSend) => {
+        let s = dataSend?.toString() || "";
+        if (s.includes("viewSeenAt") || s.includes("SeenMutation")) {
+          notify2({
+            msg: "\u{1F440} FB AIO: instagram story seen BLOCKED"
+          });
+          return null;
         }
       }
     });
