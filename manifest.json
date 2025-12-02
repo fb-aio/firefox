@@ -1,0 +1,75 @@
+{
+  "manifest_version": 3,
+  "name": "FB AIO",
+  "description": "__MSG_extDescription__",
+  "homepage_url": "https://addons.mozilla.org/firefox/addon/fb-aio/",
+  "version": "1.94",
+  "default_locale": "en",
+  "icons": {
+    "16": "assets/icon16.png",
+    "32": "assets/icon32.png",
+    "48": "assets/icon32.png",
+    "128": "assets/icon128.png"
+  },
+  "action": {
+    "default_popup": "./src/popup/index.html",
+    "default_icon": "./assets/icon32.png"
+  },
+  "permissions": [
+    "idle",
+    "storage",
+    "cookies",
+    "activeTab",
+    "scripting",
+    "declarativeNetRequest",
+    "declarativeNetRequestWithHostAccess",
+    "downloads"
+  ],
+  "optional_permissions": ["tabs"],
+  "background": {
+    "scripts": ["./src/background/index.js"],
+    "type": "module"
+  },
+  "host_permissions": ["*://*/*", "<all_urls>"],
+  "content_scripts": [
+    {
+      "matches": ["*://*/*"],
+      "js": ["./src/content/content.js"],
+      "run_at": "document_start",
+      "all_frames": true
+    },
+    {
+      "matches": ["*://*/*"],
+      "js": ["./src/content/listener.js"],
+      "run_at": "document_start",
+      "all_frames": true,
+      "world": "MAIN"
+    },
+    {
+      "matches": ["*://*/*"],
+      "js": ["./src/content/external_bridge.js"],
+      "run_at": "document_start"
+    }
+  ],
+  "declarative_net_request": {
+    "rule_resources": [
+      {
+        "enabled": true,
+        "id": "ruleset_fb_aio",
+        "path": "./rules.json"
+      }
+    ]
+  },
+  "web_accessible_resources": [
+    {
+      "resources": ["src/*"],
+      "matches": ["<all_urls>"]
+    }
+  ],
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "fbaio@mozilla.org",
+      "strict_min_version": "121.0"
+    }
+  }
+}
