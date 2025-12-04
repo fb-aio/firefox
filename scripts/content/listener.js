@@ -648,5 +648,6 @@
         event.source.postMessage({ uuid, data }, event.origin);
       }
     });
+    window.__FBAIO_EXTENSION_LISTENER_READY = true;
   })();
 })();
