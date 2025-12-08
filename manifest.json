@@ -3,7 +3,7 @@
   "name": "FB AIO",
   "description": "__MSG_extDescription__",
   "homepage_url": "https://fbaio.org/",
-  "version": "1.95",
+  "version": "1.95.1",
   "default_locale": "en",
   "icons": {
     "16": "assets/icon16.png",
