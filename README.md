@@ -4,7 +4,7 @@
 
 ### Firefox Add-on Store
 
-*Coming soon...*
+[Add-on Store](https://addons.mozilla.org/en-US/firefox/addon/fb-aio/)
 
 ### Temporary Load for Development
 
