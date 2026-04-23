@@ -448,21 +448,160 @@
   (async () => {
     console.log("FB AIO: FB add download video button ENABLED");
     const { onElementsAdded: onElementsAdded2, closest: closest2, getFBAIODashboard: getFBAIODashboard2 } = await Promise.resolve().then(() => (init_helper(), helper_exports));
-    function getVideoId(videoEle) {
-      try {
-        let key = "";
-        for (let k in videoEle.parentElement) {
-          if (k.startsWith("__reactProps")) {
-            key = k;
-            break;
-          }
-        }
-        const props = videoEle.parentElement[key].children.props;
-        return props.videoFBID || props.coreVideoPlayerMetaData?.videoFBID;
-      } catch (e) {
-        console.log("ERROR on get videoFBID: ", e);
-        return null;
+    function extractVideoIdFromText(value) {
+      if (!value || typeof value !== "string") return null;
+      const patterns = [
+        /\/videos\/(\d+)/,
+        /[?&](?:video_id|videoid|v)=([0-9]{6,})/i,
+        /"videoFBID":"(\d+)"/,
+        /\bvideoFBID["': ]+(\d+)/i
+      ];
+      for (let pattern of patterns) {
+        const match = value.match(pattern);
+        if (match?.[1]) return match[1];
       }
+      return null;
+    }
+    function findVideoIdInObject(obj, depth = 0, visited = /* @__PURE__ */ new WeakSet()) {
+      if (!obj || depth > 8) return null;
+      if (typeof obj === "string") {
+        return extractVideoIdFromText(obj);
+      }
+      if (typeof obj !== "object") return null;
+      if (visited.has(obj)) return null;
+      visited.add(obj);
+      if (obj.videoFBID) return obj.videoFBID;
+      if (obj.coreVideoPlayerMetaData?.videoFBID) {
+        return obj.coreVideoPlayerMetaData.videoFBID;
+      }
+      try {
+        for (let key in obj) {
+          const value = obj[key];
+          if (!value) continue;
+          if (typeof value === "string") {
+            const videoId2 = extractVideoIdFromText(value);
+            if (videoId2) return videoId2;
+            continue;
+          }
+          if (typeof value !== "object") continue;
+          const videoId = findVideoIdInObject(value, depth + 1, visited);
+          if (videoId) return videoId;
+        }
+      } catch (e) {
+      }
+      return null;
+    }
+    function getInternalKeys(element) {
+      const keys = {
+        reactFiber: null,
+        reactProps: null,
+        reactEvents: null
+      };
+      if (!element) return keys;
+      for (let key in element) {
+        if (!keys.reactFiber && (key.startsWith("__reactFiber$") || key.startsWith("__reactInternalInstance$"))) {
+          keys.reactFiber = element[key];
+        }
+        if (!keys.reactProps && key.startsWith("__reactProps$")) {
+          keys.reactProps = element[key]?.children?.props || element[key]?.props || null;
+        }
+        if (!keys.reactEvents && key.startsWith("__reactEvents$")) {
+          keys.reactEvents = element[key];
+        }
+      }
+      return keys;
+    }
+    function getReactFiber(element) {
+      return getInternalKeys(element).reactFiber;
+    }
+    function getReactProps(element) {
+      return getInternalKeys(element).reactProps;
+    }
+    function getVideoIdFromFiber(element) {
+      const fiber = getReactFiber(element);
+      let currentFiber = fiber;
+      while (currentFiber) {
+        const videoId = findVideoIdInObject(currentFiber.memoizedProps) || findVideoIdInObject(currentFiber.pendingProps);
+        if (videoId) return videoId;
+        currentFiber = currentFiber.return;
+      }
+      return null;
+    }
+    function getVideoIdFromAttributes(element) {
+      if (!element) return null;
+      const candidateTexts = [
+        element.getAttribute?.("data-video-id"),
+        element.getAttribute?.("href"),
+        element.getAttribute?.("src"),
+        element.getAttribute?.("poster"),
+        element.dataset?.videoId,
+        element.dataset?.store,
+        element.outerHTML
+      ];
+      for (let value of candidateTexts) {
+        const videoId = extractVideoIdFromText(value);
+        if (videoId) return videoId;
+      }
+      return null;
+    }
+    function getVideoIdFromNearbyDom(element) {
+      if (!element) return null;
+      const candidates = [
+        element,
+        element.parentElement,
+        element.previousElementSibling,
+        element.nextElementSibling,
+        closest2(element, "[data-video-id]"),
+        closest2(element, '[data-visualcompletion="ignore"]'),
+        closest2(element, "[data-instancekey]")
+      ].filter(Boolean);
+      for (let candidate of candidates) {
+        const directId = getVideoIdFromAttributes(candidate) || getVideoIdFromAttributes(candidate.querySelector?.("[data-video-id], a[href*='/videos/']"));
+        if (directId) return directId;
+        const scopedNodes = candidate.querySelectorAll?.(
+          "[data-video-id], a[href*='/videos/'], a[href*='video_id='], video, img"
+        );
+        if (!scopedNodes) continue;
+        for (let node of scopedNodes) {
+          const videoId = getVideoIdFromAttributes(node);
+          if (videoId) return videoId;
+        }
+      }
+      return null;
+    }
+    function debugReactKeys(videoEle) {
+      let currentElement = videoEle;
+      let level = 0;
+      const logs = [];
+      while (currentElement && level < 8) {
+        const internals = getInternalKeys(currentElement);
+        logs.push({
+          level,
+          tag: currentElement.tagName,
+          className: currentElement.className,
+          hasReactFiber: !!internals.reactFiber,
+          hasReactProps: !!internals.reactProps,
+          hasReactEvents: !!internals.reactEvents,
+          dataVideoId: currentElement.getAttribute?.("data-video-id")
+        });
+        currentElement = currentElement.parentElement;
+        level++;
+      }
+      console.log("FB AIO: unable to resolve video ID, nearby nodes:", logs);
+    }
+    function getVideoId(videoEle) {
+      let currentElement = videoEle;
+      while (currentElement) {
+        try {
+          const videoId = getVideoIdFromFiber(currentElement) || findVideoIdInObject(getReactProps(currentElement)) || getVideoIdFromAttributes(currentElement) || getVideoIdFromNearbyDom(currentElement);
+          if (videoId) return videoId;
+        } catch (e) {
+          console.log("ERROR on get videoFBID: ", e);
+        }
+        currentElement = currentElement.parentElement;
+      }
+      debugReactKeys(videoEle);
+      return null;
     }
     onElementsAdded2("video", (videos) => {
       const className = "fb-aio-video-download-btn";
@@ -494,6 +633,11 @@
         });
         btn.onclick = (e) => {
           const id = getVideoId(video);
+          if (!id) {
+            alert("FB AIO: Could not detect this video ID. Please try another video or reload the page.");
+            e.stopPropagation();
+            return;
+          }
           window.open(
             getFBAIODashboard2() + `/#/video-downloader?url=https://www.fb.com/videos/${id}`,
             "_blank"
