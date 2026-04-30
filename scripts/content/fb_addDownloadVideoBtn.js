@@ -455,192 +455,426 @@
   // scripts/content/fb_addDownloadVideoBtn.js
   (async () => {
     console.log("FB AIO: FB add download video button ENABLED");
-    const { onElementsAdded: onElementsAdded2, closest: closest2, getFBAIODashboard: getFBAIODashboard2 } = await Promise.resolve().then(() => (init_helper(), exports_helper));
-    function extractVideoIdFromText(value) {
-      if (!value || typeof value !== "string")
-        return null;
-      const patterns = [
-        /\/videos\/(\d+)/,
-        /[?&](?:video_id|videoid|v)=([0-9]{6,})/i,
-        /"videoFBID":"(\d+)"/,
-        /\bvideoFBID["': ]+(\d+)/i
-      ];
-      for (let pattern of patterns) {
-        const match = value.match(pattern);
-        if (match?.[1])
-          return match[1];
+    const { onElementsAdded: onElementsAdded2, getFBAIODashboard: getFBAIODashboard2 } = await Promise.resolve().then(() => (init_helper(), exports_helper));
+    const videoContainerSelector = [
+      "[data-video-id]",
+      "[data-instancekey]",
+      '[data-visualcompletion="ignore"]'
+    ].join(",");
+    function closestAncestor(element, selector, boundary = null) {
+      let el = element;
+      while (el && el.nodeType === Node.ELEMENT_NODE) {
+        if (el.matches?.(selector))
+          return el;
+        if (boundary && el === boundary)
+          break;
+        el = el.parentElement;
       }
       return null;
     }
-    function findVideoIdInObject(obj, depth = 0, visited = new WeakSet) {
-      if (!obj || depth > 8)
+    function getVideoScope(videoEle) {
+      if (!videoEle)
         return null;
-      if (typeof obj === "string") {
-        return extractVideoIdFromText(obj);
+      return closestAncestor(videoEle, videoContainerSelector) || videoEle.parentElement;
+    }
+    function getCurrentVideo(videoEle, container) {
+      if (videoEle?.isConnected && (!container || container.contains(videoEle))) {
+        return videoEle;
       }
-      if (typeof obj !== "object")
-        return null;
-      if (visited.has(obj))
-        return null;
-      visited.add(obj);
-      if (obj.videoFBID)
-        return obj.videoFBID;
-      if (obj.coreVideoPlayerMetaData?.videoFBID) {
-        return obj.coreVideoPlayerMetaData.videoFBID;
+      return container?.querySelector?.("video") || null;
+    }
+    const facebookVideoLinkSelector = [
+      "a[href*='/reel/']",
+      "a[href*='/watch/?v=']",
+      "a[href*='/watch?v=']",
+      "a[href*='/videos/']",
+      "a[href*='video_id=']",
+      "a[href*='videoid=']"
+    ].join(",");
+    function isNumericString(str) {
+      return typeof str === "string" && /^[0-9]+$/.test(str);
+    }
+    function cleanNumericId(value) {
+      if (!value)
+        return "";
+      const id = String(value).split("?")[0].split("&")[0];
+      return isNumericString(id) && id !== "ifu" ? id : "";
+    }
+    function getVideoIdFromUrl(url) {
+      if (!url)
+        return "";
+      const href = String(url);
+      const parts = href.split("/");
+      let idpost = "";
+      if (href.includes("/reel/")) {
+        idpost = cleanNumericId(parts[4]);
+        if (idpost)
+          return idpost;
       }
-      try {
-        for (let key in obj) {
-          const value = obj[key];
-          if (!value)
-            continue;
-          if (typeof value === "string") {
-            const videoId2 = extractVideoIdFromText(value);
-            if (videoId2)
-              return videoId2;
-            continue;
+      if (href.includes("/videos/")) {
+        const videoIndex = parts.indexOf("videos");
+        idpost = cleanNumericId(parts[videoIndex + 1]);
+        if (idpost)
+          return idpost;
+      }
+      if (href.includes("pagechienca/")) {
+        idpost = cleanNumericId(parts[5]);
+        if (idpost)
+          return idpost;
+      }
+      if (href.includes("=")) {
+        idpost = cleanNumericId(href.split("=")[1]);
+        if (idpost)
+          return idpost;
+      }
+      idpost = cleanNumericId(parts[5]);
+      if (idpost)
+        return idpost;
+      idpost = cleanNumericId(parts[6]);
+      if (idpost)
+        return idpost;
+      return "";
+    }
+    function getVideoIdFromPageUrl() {
+      const reelpost = location.pathname.includes("/reel/");
+      const videourl = location.pathname.includes("/videos/");
+      const watchurl = location.pathname.startsWith("/watch");
+      if (!reelpost && !videourl && !watchurl)
+        return "";
+      return getVideoIdFromUrl(location.href);
+    }
+    function getClosestInstanceKeyElement(videoEle, container) {
+      return closestAncestor(videoEle, 'div[data-instancekey^="id-vpuid"]') || closestAncestor(container, 'div[data-instancekey^="id-vpuid"]') || Array.from(document.querySelectorAll('div[data-instancekey^="id-vpuid"]')).find((element) => element.contains(videoEle)) || null;
+    }
+    function getVideoIdFromStorySaverDom(videoEle, container) {
+      const pageVideoId = getVideoIdFromPageUrl();
+      if (pageVideoId)
+        return pageVideoId;
+      let max = getClosestInstanceKeyElement(videoEle, container) || videoEle?.parentElement || container;
+      let maxadd = 0;
+      while (max && max !== document.body) {
+        const query = max.querySelectorAll?.(facebookVideoLinkSelector);
+        if (query?.length) {
+          for (let item of query) {
+            const idpost = getVideoIdFromUrl(item.href);
+            if (idpost)
+              return idpost;
           }
-          if (typeof value !== "object")
-            continue;
-          const videoId = findVideoIdInObject(value, depth + 1, visited);
-          if (videoId)
-            return videoId;
         }
-      } catch (e) {}
-      return null;
-    }
-    function getInternalKeys(element) {
-      const keys = {
-        reactFiber: null,
-        reactProps: null,
-        reactEvents: null
-      };
-      if (!element)
-        return keys;
-      for (let key in element) {
-        if (!keys.reactFiber && (key.startsWith("__reactFiber$") || key.startsWith("__reactInternalInstance$"))) {
-          keys.reactFiber = element[key];
-        }
-        if (!keys.reactProps && key.startsWith("__reactProps$")) {
-          keys.reactProps = element[key]?.children?.props || element[key]?.props || null;
-        }
-        if (!keys.reactEvents && key.startsWith("__reactEvents$")) {
-          keys.reactEvents = element[key];
-        }
+        maxadd += 1;
+        if (maxadd > 100)
+          break;
+        max = max.parentElement;
       }
-      return keys;
+      return "";
     }
     function getReactFiber(element) {
-      return getInternalKeys(element).reactFiber;
-    }
-    function getReactProps(element) {
-      return getInternalKeys(element).reactProps;
-    }
-    function getVideoIdFromFiber(element) {
-      const fiber = getReactFiber(element);
-      let currentFiber = fiber;
-      while (currentFiber) {
-        const videoId = findVideoIdInObject(currentFiber.memoizedProps) || findVideoIdInObject(currentFiber.pendingProps);
-        if (videoId)
-          return videoId;
-        currentFiber = currentFiber.return;
-      }
-      return null;
-    }
-    function getVideoIdFromAttributes(element) {
       if (!element)
         return null;
-      const candidateTexts = [
-        element.getAttribute?.("data-video-id"),
-        element.getAttribute?.("href"),
-        element.getAttribute?.("src"),
-        element.getAttribute?.("poster"),
-        element.dataset?.videoId,
-        element.dataset?.store,
-        element.outerHTML
-      ];
-      for (let value of candidateTexts) {
-        const videoId = extractVideoIdFromText(value);
-        if (videoId)
-          return videoId;
-      }
-      return null;
-    }
-    function getVideoIdFromNearbyDom(element) {
-      if (!element)
-        return null;
-      const candidates = [
-        element,
-        element.parentElement,
-        element.previousElementSibling,
-        element.nextElementSibling,
-        closest2(element, "[data-video-id]"),
-        closest2(element, '[data-visualcompletion="ignore"]'),
-        closest2(element, "[data-instancekey]")
-      ].filter(Boolean);
-      for (let candidate of candidates) {
-        const directId = getVideoIdFromAttributes(candidate) || getVideoIdFromAttributes(candidate.querySelector?.("[data-video-id], a[href*='/videos/']"));
-        if (directId)
-          return directId;
-        const scopedNodes = candidate.querySelectorAll?.("[data-video-id], a[href*='/videos/'], a[href*='video_id='], video, img");
-        if (!scopedNodes)
-          continue;
-        for (let node of scopedNodes) {
-          const videoId = getVideoIdFromAttributes(node);
-          if (videoId)
-            return videoId;
+      for (let key in element) {
+        if (key.startsWith("__reactFiber$") || key.startsWith("__reactInternalInstance$")) {
+          return element[key];
         }
       }
       return null;
     }
-    function debugReactKeys(videoEle) {
-      let currentElement = videoEle;
+    function getFiberName(fiber) {
+      const type = fiber?.elementType || fiber?.type;
+      return type?.displayName || type?.name || fiber?._debugOwner?.elementType?.displayName || fiber?._debugOwner?.elementType?.name || fiber?._debugOwner?.type?.displayName || fiber?._debugOwner?.type?.name || "";
+    }
+    function getVideoIdFromProps(props) {
+      const id = props?.video?.id;
+      return cleanNumericId(id);
+    }
+    function getVideoIdFromFiberProps(fiber) {
+      return getVideoIdFromProps(fiber?.memoizedProps) || getVideoIdFromProps(fiber?.pendingProps);
+    }
+    function isVideoControlsFiber(fiber) {
+      const componentName = getFiberName(fiber);
+      return componentName.includes("FBUnifiedLightweightVideoAttachmentMediaControls");
+    }
+    function getDevToolsHook() {
+      return window.__REACT_DEVTOOLS_GLOBAL_HOOK__ || null;
+    }
+    function getDevToolsFiberByHostInstance(element) {
+      const hook = getDevToolsHook();
+      if (!element || !hook?.renderers)
+        return null;
+      for (let renderer of hook.renderers.values()) {
+        try {
+          const fiber = renderer?.findFiberByHostInstance?.(element);
+          if (fiber)
+            return fiber;
+        } catch (e) {
+          console.log("FB AIO: React renderer host lookup failed", e);
+        }
+      }
+      return null;
+    }
+    function getVideoBoundary(videoEle, container) {
+      return closestAncestor(videoEle, '[role="article"],[data-pagelet^="FeedUnit_"]') || closestAncestor(container, '[role="article"],[data-pagelet^="FeedUnit_"]') || container || videoEle?.parentElement || null;
+    }
+    function getDescendantHostElement(fiber) {
+      const stack = [fiber?.child];
+      const visited = new Set;
+      let count = 0;
+      while (stack.length && count < 300) {
+        const current = stack.pop();
+        if (!current || visited.has(current))
+          continue;
+        visited.add(current);
+        count++;
+        if (current.stateNode?.nodeType === Node.ELEMENT_NODE) {
+          return current.stateNode;
+        }
+        if (current.sibling)
+          stack.push(current.sibling);
+        if (current.child)
+          stack.push(current.child);
+      }
+      return null;
+    }
+    function getAncestorHostElement(fiber) {
+      let current = fiber;
       let level = 0;
-      const logs = [];
-      while (currentElement && level < 8) {
-        const internals = getInternalKeys(currentElement);
-        logs.push({
-          level,
-          tag: currentElement.tagName,
-          className: currentElement.className,
-          hasReactFiber: !!internals.reactFiber,
-          hasReactProps: !!internals.reactProps,
-          hasReactEvents: !!internals.reactEvents,
-          dataVideoId: currentElement.getAttribute?.("data-video-id")
-        });
-        currentElement = currentElement.parentElement;
+      while (current && level < 80) {
+        if (current.stateNode?.nodeType === Node.ELEMENT_NODE) {
+          return current.stateNode;
+        }
+        current = current.return;
         level++;
       }
-      console.log("FB AIO: unable to resolve video ID, nearby nodes:", logs);
-    }
-    function getVideoId(videoEle) {
-      let currentElement = videoEle;
-      while (currentElement) {
-        try {
-          const videoId = getVideoIdFromFiber(currentElement) || findVideoIdInObject(getReactProps(currentElement)) || getVideoIdFromAttributes(currentElement) || getVideoIdFromNearbyDom(currentElement);
-          if (videoId)
-            return videoId;
-        } catch (e) {
-          console.log("ERROR on get videoFBID: ", e);
-        }
-        currentElement = currentElement.parentElement;
-      }
-      debugReactKeys(videoEle);
       return null;
+    }
+    function getFiberHostElement(fiber) {
+      return getDescendantHostElement(fiber) || getAncestorHostElement(fiber);
+    }
+    function getRectDistance(a, b) {
+      if (!a || !b || !a.width || !a.height || !b.width || !b.height) {
+        return Number.POSITIVE_INFINITY;
+      }
+      const ax = a.left + a.width / 2;
+      const ay = a.top + a.height / 2;
+      const bx = b.left + b.width / 2;
+      const by = b.top + b.height / 2;
+      return Math.hypot(ax - bx, ay - by);
+    }
+    function getRectIntersectionRatio(a, b) {
+      if (!a || !b || !a.width || !a.height || !b.width || !b.height)
+        return 0;
+      const left = Math.max(a.left, b.left);
+      const top = Math.max(a.top, b.top);
+      const right = Math.min(a.right, b.right);
+      const bottom = Math.min(a.bottom, b.bottom);
+      const width = Math.max(0, right - left);
+      const height = Math.max(0, bottom - top);
+      const intersection = width * height;
+      const smallerArea = Math.min(a.width * a.height, b.width * b.height);
+      return smallerArea ? intersection / smallerArea : 0;
+    }
+    function getElementDebugInfo(element, videoEle) {
+      const rect = element?.getBoundingClientRect?.();
+      const videoRect = videoEle?.getBoundingClientRect?.();
+      const distance = getRectDistance(rect, videoRect);
+      const overlap = getRectIntersectionRatio(rect, videoRect);
+      return {
+        tag: element?.tagName || "",
+        role: element?.getAttribute?.("role") || "",
+        ariaLabel: element?.getAttribute?.("aria-label") || "",
+        className: typeof element?.className === "string" ? element.className : "",
+        rect: rect ? {
+          top: Math.round(rect.top),
+          left: Math.round(rect.left),
+          width: Math.round(rect.width),
+          height: Math.round(rect.height)
+        } : null,
+        distance: Number.isFinite(distance) ? Math.round(distance) : null,
+        overlap: Math.round(overlap * 100) / 100
+      };
+    }
+    function isHostElementRelatedToVideo(hostElement, videoEle, container) {
+      if (!hostElement)
+        return false;
+      if (hostElement === videoEle)
+        return true;
+      if (hostElement.contains?.(videoEle) || videoEle?.contains?.(hostElement)) {
+        return true;
+      }
+      if (container?.contains?.(hostElement) || hostElement.contains?.(container)) {
+        return true;
+      }
+      const boundary = getVideoBoundary(videoEle, container);
+      if (boundary?.contains?.(hostElement))
+        return true;
+      const hostRect = hostElement.getBoundingClientRect?.();
+      const videoRect = videoEle?.getBoundingClientRect?.();
+      return getRectDistance(hostRect, videoRect) < 700;
+    }
+    function collectVideoIdCandidatesFromFiberSubtree(rootFiber, videoEle, container, rendererId, limit = 60000) {
+      const stack = [rootFiber];
+      const visited = new Set;
+      const candidates = [];
+      let count = 0;
+      while (stack.length && count < limit) {
+        const fiber = stack.pop();
+        if (!fiber || visited.has(fiber))
+          continue;
+        visited.add(fiber);
+        count++;
+        const videoId = getVideoIdFromFiberProps(fiber);
+        if (videoId) {
+          const componentName = getFiberName(fiber);
+          const hostElement = getFiberHostElement(fiber);
+          const hostInfo = getElementDebugInfo(hostElement, videoEle);
+          const hostRect = hostElement?.getBoundingClientRect?.();
+          const videoRect = videoEle?.getBoundingClientRect?.();
+          const isRelated = isHostElementRelatedToVideo(hostElement, videoEle, container);
+          const overlap = getRectIntersectionRatio(hostRect, videoRect);
+          candidates.push({
+            id: videoId,
+            componentName,
+            isVideoControls: isVideoControlsFiber(fiber),
+            isRelated,
+            rendererId,
+            host: hostInfo,
+            score: (isRelated ? 1000 : 0) + (isVideoControlsFiber(fiber) ? 500 : 0) + Math.round(overlap * 300) - (hostInfo.distance || 1e4)
+          });
+        }
+        if (fiber.sibling)
+          stack.push(fiber.sibling);
+        if (fiber.child)
+          stack.push(fiber.child);
+      }
+      return candidates;
+    }
+    function pickNearestVideoIdCandidate(candidates) {
+      return candidates.filter((item) => item.isRelated).sort((a, b) => b.score - a.score)[0];
+    }
+    function logVideoIdCandidates(candidates, selectedId, videoEle, container) {
+      console.log("FB AIO: DevTools video id candidates", {
+        selectedId,
+        total: candidates.length,
+        uniqueIds: Array.from(new Set(candidates.map((item) => item.id))),
+        currentVideo: getElementDebugInfo(videoEle, videoEle),
+        container: getElementDebugInfo(container, videoEle),
+        candidates
+      });
+      console.table(candidates.map((item, index) => ({
+        index,
+        id: item.id,
+        selected: item.id === selectedId,
+        related: item.isRelated,
+        controls: item.isVideoControls,
+        score: item.score,
+        component: item.componentName,
+        distance: item.host.distance,
+        overlap: item.host.overlap,
+        host: item.host.tag,
+        ariaLabel: item.host.ariaLabel
+      })));
+    }
+    function getVideoIdFromDevToolsRoots(videoEle, container) {
+      const hook = getDevToolsHook();
+      if (!hook?.renderers || !hook?.getFiberRoots)
+        return "";
+      const candidates = [];
+      for (let rendererId of hook.renderers.keys()) {
+        let roots = null;
+        try {
+          roots = hook.getFiberRoots(rendererId);
+        } catch (e) {
+          console.log("FB AIO: React DevTools root lookup failed", e);
+        }
+        if (!roots)
+          continue;
+        for (let root of roots) {
+          const rootFiber = root?.current || root;
+          candidates.push(...collectVideoIdCandidatesFromFiberSubtree(rootFiber, videoEle, container, rendererId, 60000));
+        }
+      }
+      const selected = pickNearestVideoIdCandidate(candidates);
+      if (candidates.length) {
+        logVideoIdCandidates(candidates, selected?.id || "", videoEle, container);
+      }
+      return selected?.id || "";
+    }
+    function getVideoId(videoEle, container) {
+      const idpost = getVideoIdFromDevToolsRoots(videoEle, container) || getVideoIdFromStorySaverDom(videoEle, container);
+      if (!idpost) {
+        const hook = getDevToolsHook();
+        console.log("FB AIO: video id resolver failed", {
+          href: location.href,
+          hasVideo: !!videoEle,
+          hasContainer: !!container,
+          hasReactFiber: !!getReactFiber(videoEle) || !!getDevToolsFiberByHostInstance(videoEle),
+          hasDevToolsHook: !!hook,
+          rendererCount: hook?.renderers?.size || 0,
+          instanceKey: getClosestInstanceKeyElement(videoEle, container)?.getAttribute?.("data-instancekey")
+        });
+      }
+      return idpost;
+    }
+    const activeVideoButtons = new Set;
+    let updateButtonsScheduled = false;
+    let buttonPositionListenersAdded = false;
+    function isVideoRectVisible(rect) {
+      return rect.width > 80 && rect.height > 80 && rect.bottom > 0 && rect.right > 0 && rect.top < window.innerHeight && rect.left < window.innerWidth;
+    }
+    function positionDownloadButton(entry) {
+      const { video, container, btn } = entry;
+      const currentVideo = getCurrentVideo(video, container);
+      if (!currentVideo?.isConnected) {
+        btn.remove();
+        activeVideoButtons.delete(entry);
+        return;
+      }
+      const rect = currentVideo.getBoundingClientRect();
+      if (!isVideoRectVisible(rect)) {
+        btn.style.display = "none";
+        return;
+      }
+      const offsetTop = Math.min(60, Math.max(10, rect.height * 0.15));
+      btn.style.display = "block";
+      btn.style.top = `${Math.max(0, rect.top + offsetTop)}px`;
+      btn.style.left = `${Math.max(0, rect.right - 50)}px`;
+    }
+    function updateButtonPositions() {
+      updateButtonsScheduled = false;
+      for (let entry of Array.from(activeVideoButtons)) {
+        positionDownloadButton(entry);
+      }
+    }
+    function scheduleButtonPositionUpdate() {
+      if (updateButtonsScheduled)
+        return;
+      updateButtonsScheduled = true;
+      requestAnimationFrame(updateButtonPositions);
+    }
+    function ensureButtonPositionListeners() {
+      if (buttonPositionListenersAdded)
+        return;
+      buttonPositionListenersAdded = true;
+      window.addEventListener("scroll", scheduleButtonPositionUpdate, true);
+      window.addEventListener("resize", scheduleButtonPositionUpdate);
+      setInterval(scheduleButtonPositionUpdate, 1000);
     }
     onElementsAdded2("video", (videos) => {
       const className = "fb-aio-video-download-btn";
       for (let video of videos) {
-        const container = closest2(video, "[data-video-id]") || closest2(video, '[data-visualcompletion="ignore"]') || video.parentElement;
-        if (container.querySelector(`.${className}`))
+        const container = getVideoScope(video);
+        if (!container)
           continue;
+        if (Array.from(activeVideoButtons).some((entry2) => entry2.video === video)) {
+          continue;
+        }
         let btn = document.createElement("button");
         btn.className = className;
         btn.textContent = "⬇️";
         btn.title = "FB AIO: Download video";
         btn.style.cssText = `
-        position: absolute;
-        top: 60px;
-        right: 10px;
+        position: fixed;
+        top: 0;
+        left: 0;
         width: 40px;
         height: 40px;
         background-color: #333;
@@ -649,6 +883,7 @@
         border: none;
         opacity: 0.3;
         cursor: pointer;
+        pointer-events: auto;
         z-index: 2147483647;`;
         btn.addEventListener("mouseenter", () => {
           btn.style.opacity = 1;
@@ -657,16 +892,22 @@
           btn.style.opacity = 0.5;
         });
         btn.onclick = (e) => {
-          const id = getVideoId(video);
+          e.preventDefault();
+          e.stopImmediatePropagation?.();
+          e.stopPropagation();
+          const currentVideo = getCurrentVideo(video, container);
+          const id = getVideoId(currentVideo, container);
           if (!id) {
             alert("FB AIO: Could not detect this video ID. Please try another video or reload the page.");
-            e.stopPropagation();
             return;
           }
           window.open(getFBAIODashboard2() + `/#/video-downloader?url=https://www.fb.com/videos/${id}`, "_blank");
-          e.stopPropagation();
         };
-        container.appendChild(btn);
+        document.body.appendChild(btn);
+        const entry = { video, container, btn };
+        activeVideoButtons.add(entry);
+        ensureButtonPositionListeners();
+        positionDownloadButton(entry);
       }
     });
   })();
