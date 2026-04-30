@@ -1,44 +1,46 @@
 (() => {
   var __defProp = Object.defineProperty;
-  var __getOwnPropNames = Object.getOwnPropertyNames;
-  var __esm = (fn, res) => function __init() {
-    return fn && (res = (0, fn[__getOwnPropNames(fn)[0]])(fn = 0)), res;
-  };
   var __export = (target, all) => {
     for (var name in all)
-      __defProp(target, name, { get: all[name], enumerable: true });
+      __defProp(target, name, {
+        get: all[name],
+        enumerable: true,
+        configurable: true,
+        set: (newValue) => all[name] = () => newValue
+      });
   };
+  var __esm = (fn, res) => () => (fn && (res = fn(fn = 0)), res);
 
   // scripts/content/helper/helper.js
-  var helper_exports = {};
-  __export(helper_exports, {
-    closest: () => closest,
-    createTrustedHtml: () => createTrustedHtml,
-    createTrustedScript: () => createTrustedScript,
-    deepFind: () => deepFind,
-    downloadData: () => downloadData,
-    downloadUrl: () => downloadUrl,
-    executeScript: () => executeScript,
-    getExtStorage: () => getExtStorage,
-    getFBAIODashboard: () => getFBAIODashboard,
-    getNumberFormatter: () => getNumberFormatter,
-    getTrustedPolicy: () => getTrustedPolicy,
-    getURL: () => getURL,
-    injectCssCode: () => injectCssCode,
-    injectCssFile: () => injectCssFile,
-    injectScriptSrc: () => injectScriptSrc,
-    injectScriptSrcAsync: () => injectScriptSrcAsync,
-    loadingFullScreen: () => loadingFullScreen,
-    notify: () => notify,
-    onElementRemoved: () => onElementRemoved,
-    onElementsAdded: () => onElementsAdded,
-    parseSafe: () => parseSafe,
-    runInBackground: () => runInBackground2,
-    runInContentScript: () => runInContentScript,
-    sanitizeName: () => sanitizeName,
-    sendToContentScript: () => sendToContentScript,
+  var exports_helper = {};
+  __export(exports_helper, {
+    sleep: () => sleep,
     setExtStorage: () => setExtStorage,
-    sleep: () => sleep
+    sendToContentScript: () => sendToContentScript,
+    sanitizeName: () => sanitizeName,
+    runInContentScript: () => runInContentScript,
+    runInBackground: () => runInBackground2,
+    parseSafe: () => parseSafe,
+    onElementsAdded: () => onElementsAdded,
+    onElementRemoved: () => onElementRemoved,
+    notify: () => notify,
+    loadingFullScreen: () => loadingFullScreen,
+    injectScriptSrcAsync: () => injectScriptSrcAsync,
+    injectScriptSrc: () => injectScriptSrc,
+    injectCssFile: () => injectCssFile,
+    injectCssCode: () => injectCssCode,
+    getURL: () => getURL,
+    getTrustedPolicy: () => getTrustedPolicy,
+    getNumberFormatter: () => getNumberFormatter,
+    getFBAIODashboard: () => getFBAIODashboard,
+    getExtStorage: () => getExtStorage,
+    executeScript: () => executeScript,
+    downloadUrl: () => downloadUrl,
+    downloadData: () => downloadData,
+    deepFind: () => deepFind,
+    createTrustedScript: () => createTrustedScript,
+    createTrustedHtml: () => createTrustedHtml,
+    closest: () => closest
   });
   function sendToContentScript(event, data) {
     return new Promise((resolve, reject) => {
@@ -47,11 +49,9 @@
       window.addEventListener(listenerKey, (evt) => resolve(evt.detail.data), {
         once: true
       });
-      window.dispatchEvent(
-        new CustomEvent("aio-pagescript-sendto-contentscript", {
-          detail: { event, data, uuid }
-        })
-      );
+      window.dispatchEvent(new CustomEvent("aio-pagescript-sendto-contentscript", {
+        detail: { event, data, uuid }
+      }));
     });
   }
   function runInContentScript(fnPath, params) {
@@ -81,11 +81,12 @@
     y = window.innerHeight - 100,
     align = "center",
     styleText = "",
-    duration = 3e3,
+    duration = 3000,
     id = "aio_notify_div"
   } = {}) {
     let exist = document.getElementById(id);
-    if (exist) exist.remove();
+    if (exist)
+      exist.remove();
     let div = document.createElement("div");
     div.id = id;
     div.style.cssText = `
@@ -112,13 +113,14 @@
             div.style.opacity = 0;
             div.style.top = `${y - 50}px`;
           }
-        }, _time - 1e3),
+        }, _time - 1000),
         setTimeout(() => {
           div?.remove();
         }, _time)
       ];
     }
-    if (duration > 0) closeAfter(duration);
+    if (duration > 0)
+      closeAfter(duration);
     return {
       closeAfter,
       remove() {
@@ -132,7 +134,8 @@
       setText(text, duration2) {
         if (div) {
           div.innerHTML = createTrustedHtml(text);
-          if (duration2) closeAfter(duration2);
+          if (duration2)
+            closeAfter(duration2);
           return true;
         }
         return false;
@@ -178,13 +181,9 @@
         locale = navigator.language;
       } else {
         try {
-          locale = new URL(
-            Array.from(document.querySelectorAll("head > link[rel='search']"))?.find((n) => n?.getAttribute("href")?.includes("?locale="))?.getAttribute("href")
-          )?.searchParams?.get("locale");
+          locale = new URL(Array.from(document.querySelectorAll("head > link[rel='search']"))?.find((n) => n?.getAttribute("href")?.includes("?locale="))?.getAttribute("href"))?.searchParams?.get("locale");
         } catch {
-          console.log(
-            "Cannot find browser locale. Use en as default for number formatting."
-          );
+          console.log("Cannot find browser locale. Use en as default for number formatting.");
           locale = "en";
         }
       }
@@ -219,17 +218,21 @@
     let nodes = document.querySelectorAll(selector);
     if (nodes?.length) {
       callback(nodes);
-      if (once) return;
+      if (once)
+        return;
     }
     const observer = new MutationObserver((mutations) => {
       mutations.forEach((mutation) => {
-        if (!mutation.addedNodes) return;
+        if (!mutation.addedNodes)
+          return;
         for (let node of mutation.addedNodes) {
-          if (node.nodeType != 1) continue;
+          if (node.nodeType != 1)
+            continue;
           let n = node.matches(selector) ? [node] : Array.from(node.querySelectorAll(selector));
           if (n?.length) {
             callback(n);
-            if (once) observer.disconnect();
+            if (once)
+              observer.disconnect();
           }
         }
       });
@@ -243,7 +246,8 @@
     return () => observer.disconnect();
   }
   function onElementRemoved(element, callback) {
-    if (!element.parentElement) throw new Error("element must have parent");
+    if (!element.parentElement)
+      throw new Error("element must have parent");
     let observer = new MutationObserver(function(mutations) {
       mutations.forEach(function(mutation) {
         if (mutation.type === "childList") {
@@ -266,15 +270,18 @@
   function closest(element, selector) {
     let el = element;
     while (el !== null) {
-      if (el.matches(selector)) return el;
+      if (el.matches(selector))
+        return el;
       let found = el.querySelector(selector);
-      if (found) return found;
+      if (found)
+        return found;
       el = el.parentElement;
     }
     return el;
   }
   function deepFind(obj, path, once = true, exactPath = false) {
-    if (!obj || typeof obj !== "object") return once ? null : [];
+    if (!obj || typeof obj !== "object")
+      return once ? null : [];
     const paths = Array.isArray(path) ? path : path.split(".");
     const result = [];
     const stack = [
@@ -289,7 +296,8 @@
       const { currentObj, currentPathIndex, correctPath } = stack.pop();
       if (currentPathIndex === paths.length) {
         const res = !exactPath ? currentObj : correctPath ? currentObj : null;
-        if (once) return res;
+        if (once)
+          return res;
         result.push(res);
         continue;
       }
@@ -365,15 +373,17 @@
     const windowsReservedRe = /^(con|prn|aux|nul|com[0-9]|lpt[0-9])(\..*)?$/i;
     const windowsTrailingRe = /[\. ]+$/;
     if (modifyIfPosible) {
-      name = name.replaceAll("<", "\u2039").replaceAll(">", "\u203A").replaceAll(":", "\u2236").replaceAll('"', "\u2033").replaceAll("/", "\u2215").replaceAll("\\", "\u2216").replaceAll("|", "\xA6").replaceAll("?", "\xBF");
+      name = name.replaceAll("<", "‹").replaceAll(">", "›").replaceAll(":", "∶").replaceAll('"', "″").replaceAll("/", "∕").replaceAll("\\", "∖").replaceAll("|", "¦").replaceAll("?", "¿");
     }
     const sanitized = name.replace(illegalRe, replacement).replace(controlRe, replacement).replace(reservedRe, replacement).replace(windowsReservedRe, replacement).replace(windowsTrailingRe, replacement);
     return sanitized;
   }
   function injectCssCode(code) {
     let css = document.createElement("style");
-    if ("textContent" in css) css.textContent = code;
-    else css.innerText = code;
+    if ("textContent" in css)
+      css.textContent = code;
+    else
+      css.innerText = code;
     (document.head || document.documentElement).appendChild(css);
     return css;
   }
@@ -382,7 +392,8 @@
     css.setAttribute("rel", "stylesheet");
     css.setAttribute("type", "text/css");
     css.setAttribute("href", filePath);
-    if (id) css.setAttribute("id", id);
+    if (id)
+      css.setAttribute("id", id);
     (document.head || document.documentElement).appendChild(css);
     return css;
   }
@@ -434,14 +445,11 @@
       });
     });
   }
-  var numberFormatCached, getFBAIODashboard;
-  var init_helper = __esm({
-    "scripts/content/helper/helper.js"() {
-      numberFormatCached = {};
-      getFBAIODashboard = () => {
-        return "https://fb-aio.github.io/entry/?rand=" + Math.random() * 1e4;
-      };
-    }
+  var numberFormatCached, getFBAIODashboard = () => {
+    return "https://fb-aio.github.io/entry/?rand=" + Math.random() * 1e4;
+  };
+  var init_helper = __esm(() => {
+    numberFormatCached = {};
   });
 
   // scripts/content/web_timer.js
@@ -459,15 +467,15 @@
         cleanupFn.push(() => target.removeEventListener(event, func));
       }
       window.fbaio_web_timer_cleanup = () => {
-        if (typeof saveTimer === "function") saveTimer();
+        if (typeof saveTimer === "function")
+          saveTimer();
         cleanupFn.forEach((fn) => fn());
       };
       let needUpdateLastActive = true;
       let updateLastActive = throttle(function(e, mainframe) {
         needUpdateLastActive = true;
-      }, 1e3 / 24);
+      }, 1000 / 24);
       const allEvents = [
-        // https://javascript.info/pointer-events
         "pointerover",
         "pointerenter",
         "pointerdown",
@@ -485,8 +493,6 @@
         "wheel",
         "scroll",
         "blur",
-        // "focusin",
-        // "focusout",
         "focus"
       ];
       const updateLastActiveMsg = "fbaio_web_timer_updateLastActive";
@@ -494,51 +500,38 @@
       allEvents.forEach((event) => {
         if (isMainFrame) {
           addEventListener(window, event, (e) => {
-            if (e.target?.id == overlayId) return;
+            if (e.target?.id == overlayId)
+              return;
             updateLastActive?.(event, true);
           });
         } else {
-          addEventListener(
-            window,
-            event,
-            throttle((e) => {
-              window.top.postMessage(
-                {
-                  type: updateLastActiveMsg,
-                  event
-                },
-                "*"
-              );
-            }, 1e3 / 24)
-          );
+          addEventListener(window, event, throttle((e) => {
+            window.top.postMessage({
+              type: updateLastActiveMsg,
+              event
+            }, "*");
+          }, 1000 / 24));
         }
       });
       const checkFocusMsg = "fbaio_web_timer_checkFocus";
       if (!isMainFrame) {
         addEventListener(window, "message", (e) => {
           if (e.data?.type === checkFocusMsg) {
-            window.top.postMessage(
-              {
-                type: checkFocusMsg + "result",
-                uuid: e.data?.uuid,
-                focused: document.hasFocus()
-              },
-              "*"
-            );
+            window.top.postMessage({
+              type: checkFocusMsg + "result",
+              uuid: e.data?.uuid,
+              focused: document.hasFocus()
+            }, "*");
           }
         });
       }
-      if (!isMainFrame) return;
-      addEventListener(
-        window,
-        "message",
-        (e) => {
-          if (e.data?.type === updateLastActiveMsg) {
-            updateLastActive(e.data?.event, false);
-          }
-        },
-        false
-      );
+      if (!isMainFrame)
+        return;
+      addEventListener(window, "message", (e) => {
+        if (e.data?.type === updateLastActiveMsg) {
+          updateLastActive(e.data?.event, false);
+        }
+      }, false);
       addEventListener(document, "visibilitychange", () => {
         if (!document.hidden) {
           updateLastActive();
@@ -549,7 +542,7 @@
       const IDLE_TIME = 60;
       const IDLE_TIME_IF_BLUR = 10;
       const SHOW_OVERLAY = true;
-      const invisible = "\u200B";
+      const invisible = "​";
       let lastActive = 0;
       let savedTimerValue = 0, currentTimerValue = 0, focusTimerValue = 0;
       getTodayTimer().then((todayTimer) => {
@@ -572,8 +565,7 @@
       });
       function setShowOverlay(show) {
         if (show) {
-          if (!document.body.contains(overlay)) {
-          }
+          if (!document.body.contains(overlay)) {}
           overlay.style.top = "0";
         } else {
           overlay.style.top = "-100vh";
@@ -586,7 +578,8 @@
         }
         let idleState = await getIdleState();
         if (idleState.isIdle) {
-          if (SHOW_OVERLAY && !document.hidden) setShowOverlay(true);
+          if (SHOW_OVERLAY && !document.hidden)
+            setShowOverlay(true);
         } else {
           setShowOverlay(false);
         }
@@ -595,25 +588,27 @@
           currentTimerValue = savedTimerValue + focusTimerValue;
           makeTitle();
         }
-        let now = /* @__PURE__ */ new Date();
+        let now = new Date;
         let isMidnight = now.getHours() === 23 && now.getMinutes() === 59 && now.getSeconds() === 59 || now.getHours() === 0 && now.getMinutes() === 0 && now.getSeconds() === 0;
         if (isMidnight) {
           saveTimer();
         }
-      }, INTERVAL_UPDATE * 1e3);
+      }, INTERVAL_UPDATE * 1000);
       cleanupFn.push(() => {
         clearInterval(intervalUpdate);
-        setTimeout(() => makeTitle(true), INTERVAL_UPDATE * 1e3);
+        setTimeout(() => makeTitle(true), INTERVAL_UPDATE * 1000);
       });
       let intervalSave = setInterval(() => {
         saveTimer();
-      }, INTERVAL_SAVE * 1e3);
+      }, INTERVAL_SAVE * 1000);
       cleanupFn.push(() => clearInterval(intervalSave));
       addEventListener(window, "beforeunload", saveTimer);
       function isFocused() {
-        if (document.hasFocus()) return true;
+        if (document.hasFocus())
+          return true;
         let iframes = Array.from(document.querySelectorAll("iframe"));
-        if (!iframes.length) return false;
+        if (!iframes.length)
+          return false;
         return new Promise((resolve) => {
           let uuid = Math.random().toString(36);
           setTimeout(() => {
@@ -621,13 +616,10 @@
             resolve(false);
           }, 500);
           iframes.forEach((iframe) => {
-            iframe.contentWindow.postMessage(
-              {
-                type: checkFocusMsg,
-                uuid
-              },
-              "*"
-            );
+            iframe.contentWindow.postMessage({
+              type: checkFocusMsg,
+              uuid
+            }, "*");
           });
           addEventListener(window, "message", onReceiveMsg);
           let msgReceivedCount = 0;
@@ -647,10 +639,10 @@
         });
       }
       async function getIdleState() {
-        const { runInBackground: runInBackground3 } = await Promise.resolve().then(() => (init_helper(), helper_exports));
+        const { runInBackground: runInBackground3 } = await Promise.resolve().then(() => (init_helper(), exports_helper));
         let timeToCheck = await isFocused() ? IDLE_TIME : IDLE_TIME_IF_BLUR;
         let timePassed = ~~(performance.now() - lastActive);
-        if (timePassed < timeToCheck * 1e3)
+        if (timePassed < timeToCheck * 1000)
           return {
             isIdle: false,
             reason: "not enough time passed since last active " + timePassed
@@ -703,14 +695,17 @@
           ["web_timer"]
         ]);
         let web_timer = result?.web_timer;
-        if (typeof web_timer !== "object") web_timer = {};
-        if (typeof web_timer[today] !== "object") web_timer[today] = {};
-        if (!web_timer[today][host]) web_timer[today][host] = 0;
+        if (typeof web_timer !== "object")
+          web_timer = {};
+        if (typeof web_timer[today] !== "object")
+          web_timer[today] = {};
+        if (!web_timer[today][host])
+          web_timer[today][host] = 0;
         let value = Math.floor(web_timer[today][host]);
         return { web_timer, host, today, value };
       }
       function getToday() {
-        return formatDate(/* @__PURE__ */ new Date());
+        return formatDate(new Date);
       }
       function formatDate(date) {
         let year = date.getFullYear();
@@ -725,11 +720,16 @@
         let hours = Math.floor(secs / 3600);
         let minutes = Math.floor((secs - hours * 3600) / 60);
         let seconds = secs - hours * 3600 - minutes * 60;
-        if (hours == 0) hours = "";
-        else hours = `${hours}:`;
-        if (hours == 0 && minutes == 0) minutes = "";
-        else minutes = `${minutes}:`;
-        if (hours == 0 && minutes == 0 && seconds == 0) seconds = "";
+        if (hours == 0)
+          hours = "";
+        else
+          hours = `${hours}:`;
+        if (hours == 0 && minutes == 0)
+          minutes = "";
+        else
+          minutes = `${minutes}:`;
+        if (hours == 0 && minutes == 0 && seconds == 0)
+          seconds = "";
         return `${hours}${minutes}${seconds}`;
       }
       async function makeTitle(revert) {

@@ -1,44 +1,46 @@
 (() => {
   var __defProp = Object.defineProperty;
-  var __getOwnPropNames = Object.getOwnPropertyNames;
-  var __esm = (fn, res) => function __init() {
-    return fn && (res = (0, fn[__getOwnPropNames(fn)[0]])(fn = 0)), res;
-  };
   var __export = (target, all) => {
     for (var name in all)
-      __defProp(target, name, { get: all[name], enumerable: true });
+      __defProp(target, name, {
+        get: all[name],
+        enumerable: true,
+        configurable: true,
+        set: (newValue) => all[name] = () => newValue
+      });
   };
+  var __esm = (fn, res) => () => (fn && (res = fn(fn = 0)), res);
 
   // scripts/content/helper/helper.js
-  var helper_exports = {};
-  __export(helper_exports, {
-    closest: () => closest,
-    createTrustedHtml: () => createTrustedHtml,
-    createTrustedScript: () => createTrustedScript,
-    deepFind: () => deepFind,
-    downloadData: () => downloadData,
-    downloadUrl: () => downloadUrl,
-    executeScript: () => executeScript,
-    getExtStorage: () => getExtStorage,
-    getFBAIODashboard: () => getFBAIODashboard,
-    getNumberFormatter: () => getNumberFormatter,
-    getTrustedPolicy: () => getTrustedPolicy,
-    getURL: () => getURL,
-    injectCssCode: () => injectCssCode,
-    injectCssFile: () => injectCssFile,
-    injectScriptSrc: () => injectScriptSrc,
-    injectScriptSrcAsync: () => injectScriptSrcAsync,
-    loadingFullScreen: () => loadingFullScreen,
-    notify: () => notify,
-    onElementRemoved: () => onElementRemoved,
-    onElementsAdded: () => onElementsAdded,
-    parseSafe: () => parseSafe,
-    runInBackground: () => runInBackground,
-    runInContentScript: () => runInContentScript,
-    sanitizeName: () => sanitizeName,
-    sendToContentScript: () => sendToContentScript,
+  var exports_helper = {};
+  __export(exports_helper, {
+    sleep: () => sleep,
     setExtStorage: () => setExtStorage,
-    sleep: () => sleep
+    sendToContentScript: () => sendToContentScript,
+    sanitizeName: () => sanitizeName,
+    runInContentScript: () => runInContentScript,
+    runInBackground: () => runInBackground,
+    parseSafe: () => parseSafe,
+    onElementsAdded: () => onElementsAdded,
+    onElementRemoved: () => onElementRemoved,
+    notify: () => notify,
+    loadingFullScreen: () => loadingFullScreen,
+    injectScriptSrcAsync: () => injectScriptSrcAsync,
+    injectScriptSrc: () => injectScriptSrc,
+    injectCssFile: () => injectCssFile,
+    injectCssCode: () => injectCssCode,
+    getURL: () => getURL,
+    getTrustedPolicy: () => getTrustedPolicy,
+    getNumberFormatter: () => getNumberFormatter,
+    getFBAIODashboard: () => getFBAIODashboard,
+    getExtStorage: () => getExtStorage,
+    executeScript: () => executeScript,
+    downloadUrl: () => downloadUrl,
+    downloadData: () => downloadData,
+    deepFind: () => deepFind,
+    createTrustedScript: () => createTrustedScript,
+    createTrustedHtml: () => createTrustedHtml,
+    closest: () => closest
   });
   function sendToContentScript(event, data) {
     return new Promise((resolve, reject) => {
@@ -47,11 +49,9 @@
       window.addEventListener(listenerKey, (evt) => resolve(evt.detail.data), {
         once: true
       });
-      window.dispatchEvent(
-        new CustomEvent("aio-pagescript-sendto-contentscript", {
-          detail: { event, data, uuid }
-        })
-      );
+      window.dispatchEvent(new CustomEvent("aio-pagescript-sendto-contentscript", {
+        detail: { event, data, uuid }
+      }));
     });
   }
   function runInContentScript(fnPath, params) {
@@ -81,11 +81,12 @@
     y = window.innerHeight - 100,
     align = "center",
     styleText = "",
-    duration = 3e3,
+    duration = 3000,
     id = "aio_notify_div"
   } = {}) {
     let exist = document.getElementById(id);
-    if (exist) exist.remove();
+    if (exist)
+      exist.remove();
     let div = document.createElement("div");
     div.id = id;
     div.style.cssText = `
@@ -112,13 +113,14 @@
             div.style.opacity = 0;
             div.style.top = `${y - 50}px`;
           }
-        }, _time - 1e3),
+        }, _time - 1000),
         setTimeout(() => {
           div?.remove();
         }, _time)
       ];
     }
-    if (duration > 0) closeAfter(duration);
+    if (duration > 0)
+      closeAfter(duration);
     return {
       closeAfter,
       remove() {
@@ -132,7 +134,8 @@
       setText(text, duration2) {
         if (div) {
           div.innerHTML = createTrustedHtml(text);
-          if (duration2) closeAfter(duration2);
+          if (duration2)
+            closeAfter(duration2);
           return true;
         }
         return false;
@@ -178,13 +181,9 @@
         locale = navigator.language;
       } else {
         try {
-          locale = new URL(
-            Array.from(document.querySelectorAll("head > link[rel='search']"))?.find((n) => n?.getAttribute("href")?.includes("?locale="))?.getAttribute("href")
-          )?.searchParams?.get("locale");
+          locale = new URL(Array.from(document.querySelectorAll("head > link[rel='search']"))?.find((n) => n?.getAttribute("href")?.includes("?locale="))?.getAttribute("href"))?.searchParams?.get("locale");
         } catch {
-          console.log(
-            "Cannot find browser locale. Use en as default for number formatting."
-          );
+          console.log("Cannot find browser locale. Use en as default for number formatting.");
           locale = "en";
         }
       }
@@ -219,17 +218,21 @@
     let nodes = document.querySelectorAll(selector);
     if (nodes?.length) {
       callback(nodes);
-      if (once) return;
+      if (once)
+        return;
     }
     const observer = new MutationObserver((mutations) => {
       mutations.forEach((mutation) => {
-        if (!mutation.addedNodes) return;
+        if (!mutation.addedNodes)
+          return;
         for (let node of mutation.addedNodes) {
-          if (node.nodeType != 1) continue;
+          if (node.nodeType != 1)
+            continue;
           let n = node.matches(selector) ? [node] : Array.from(node.querySelectorAll(selector));
           if (n?.length) {
             callback(n);
-            if (once) observer.disconnect();
+            if (once)
+              observer.disconnect();
           }
         }
       });
@@ -243,7 +246,8 @@
     return () => observer.disconnect();
   }
   function onElementRemoved(element, callback) {
-    if (!element.parentElement) throw new Error("element must have parent");
+    if (!element.parentElement)
+      throw new Error("element must have parent");
     let observer = new MutationObserver(function(mutations) {
       mutations.forEach(function(mutation) {
         if (mutation.type === "childList") {
@@ -266,15 +270,18 @@
   function closest(element, selector) {
     let el = element;
     while (el !== null) {
-      if (el.matches(selector)) return el;
+      if (el.matches(selector))
+        return el;
       let found = el.querySelector(selector);
-      if (found) return found;
+      if (found)
+        return found;
       el = el.parentElement;
     }
     return el;
   }
   function deepFind(obj, path, once = true, exactPath = false) {
-    if (!obj || typeof obj !== "object") return once ? null : [];
+    if (!obj || typeof obj !== "object")
+      return once ? null : [];
     const paths = Array.isArray(path) ? path : path.split(".");
     const result = [];
     const stack = [
@@ -289,7 +296,8 @@
       const { currentObj, currentPathIndex, correctPath } = stack.pop();
       if (currentPathIndex === paths.length) {
         const res = !exactPath ? currentObj : correctPath ? currentObj : null;
-        if (once) return res;
+        if (once)
+          return res;
         result.push(res);
         continue;
       }
@@ -365,15 +373,17 @@
     const windowsReservedRe = /^(con|prn|aux|nul|com[0-9]|lpt[0-9])(\..*)?$/i;
     const windowsTrailingRe = /[\. ]+$/;
     if (modifyIfPosible) {
-      name = name.replaceAll("<", "\u2039").replaceAll(">", "\u203A").replaceAll(":", "\u2236").replaceAll('"', "\u2033").replaceAll("/", "\u2215").replaceAll("\\", "\u2216").replaceAll("|", "\xA6").replaceAll("?", "\xBF");
+      name = name.replaceAll("<", "‹").replaceAll(">", "›").replaceAll(":", "∶").replaceAll('"', "″").replaceAll("/", "∕").replaceAll("\\", "∖").replaceAll("|", "¦").replaceAll("?", "¿");
     }
     const sanitized = name.replace(illegalRe, replacement).replace(controlRe, replacement).replace(reservedRe, replacement).replace(windowsReservedRe, replacement).replace(windowsTrailingRe, replacement);
     return sanitized;
   }
   function injectCssCode(code) {
     let css = document.createElement("style");
-    if ("textContent" in css) css.textContent = code;
-    else css.innerText = code;
+    if ("textContent" in css)
+      css.textContent = code;
+    else
+      css.innerText = code;
     (document.head || document.documentElement).appendChild(css);
     return css;
   }
@@ -382,7 +392,8 @@
     css.setAttribute("rel", "stylesheet");
     css.setAttribute("type", "text/css");
     css.setAttribute("href", filePath);
-    if (id) css.setAttribute("id", id);
+    if (id)
+      css.setAttribute("id", id);
     (document.head || document.documentElement).appendChild(css);
     return css;
   }
@@ -434,32 +445,31 @@
       });
     });
   }
-  var numberFormatCached, getFBAIODashboard;
-  var init_helper = __esm({
-    "scripts/content/helper/helper.js"() {
-      numberFormatCached = {};
-      getFBAIODashboard = () => {
-        return "https://fb-aio.github.io/entry/?rand=" + Math.random() * 1e4;
-      };
-    }
+  var numberFormatCached, getFBAIODashboard = () => {
+    return "https://fb-aio.github.io/entry/?rand=" + Math.random() * 1e4;
+  };
+  var init_helper = __esm(() => {
+    numberFormatCached = {};
   });
 
   // scripts/content/helper/ajax-hook.js
-  var ajax_hook_exports = {};
-  __export(ajax_hook_exports, {
-    hookFetch: () => hookFetch,
+  var exports_ajax_hook = {};
+  __export(exports_ajax_hook, {
+    hookXHR: () => hookXHR,
     hookWS: () => hookWS,
-    hookXHR: () => hookXHR
+    hookFetch: () => hookFetch
   });
   function hook(configs = []) {
     const unsubFn = [];
     for (const { fn, arr } of configs) {
-      if (typeof fn !== "function" || !Array.isArray(arr)) continue;
+      if (typeof fn !== "function" || !Array.isArray(arr))
+        continue;
       const id = randId();
       arr.push({ fn, id });
       unsubFn.push(() => {
         const index = arr.findIndex((e) => e.id === id);
-        if (index !== -1) arr.splice(index, 1);
+        if (index !== -1)
+          arr.splice(index, 1);
       });
     }
     return () => {
@@ -485,11 +495,11 @@
       }
       let request = { url, options };
       for (const { fn } of onBeforeFetchFn) {
-        const res = await fn?.(request.url, request.options)?.catch(
-          console.error
-        );
-        if (res) request = res;
-        if (res === null) return null;
+        const res = await fn?.(request.url, request.options)?.catch(console.error);
+        if (res)
+          request = res;
+        if (res === null)
+          return null;
       }
       if (urlOrRequest instanceof Request) {
         try {
@@ -502,11 +512,11 @@
       }
       let response = await originalFetch(urlOrRequest, options);
       for (const { fn } of onAfterFetchFn) {
-        const res = await fn?.(request.url, request.options, response)?.catch(
-          console.error
-        );
-        if (res) response = res;
-        if (res === null) return null;
+        const res = await fn?.(request.url, request.options, response)?.catch(console.error);
+        if (res)
+          response = res;
+        if (res === null)
+          return null;
       }
       return response;
     };
@@ -532,8 +542,10 @@
           p = { method, url, async, user, password };
           for (const { fn } of onBeforeOpenXHRFn) {
             const res = await fn?.(p);
-            if (res) p = res;
-            if (res === null) return;
+            if (res)
+              p = res;
+            if (res === null)
+              return;
           }
           return open.apply(this, [
             p.method,
@@ -548,8 +560,10 @@
         instance.send = async function(dataSend) {
           for (const { fn } of onBeforeSendXHRFn) {
             const res = await fn?.(p, dataSend);
-            if (res) dataSend = res;
-            if (res === null) return;
+            if (res)
+              dataSend = res;
+            if (res === null)
+              return;
           }
           instance.addEventListener("load", function() {
             for (const { fn } of onAfterSendXHRFn)
@@ -578,8 +592,10 @@
       let WSObject;
       for (let { fn } of modifyUrlWsFn) {
         let _url = fn?.(url);
-        if (_url) url = _url;
-        if (_url === null) return null;
+        if (_url)
+          url = _url;
+        if (_url === null)
+          return null;
       }
       this.url = url;
       this.protocols = protocols;
@@ -593,8 +609,10 @@
         let arg0 = arguments[0];
         for (const { fn } of onBeforeWSFn) {
           const res = fn?.(arg0, WSObject.url, WSObject);
-          if (res) arg0 = res;
-          if (res === null) return;
+          if (res)
+            arg0 = res;
+          if (res === null)
+            return;
         }
         arguments[0] = arg0;
         _send.apply(this, arguments);
@@ -603,17 +621,15 @@
       WSObject.addEventListener = function() {
         const eventThis = this;
         if (arguments[0] === "message") {
-          arguments[1] = /* @__PURE__ */ function(userFunc) {
+          arguments[1] = function(userFunc) {
             return async function instrumentAddEventListener() {
               let arg0 = arguments[0];
               for (const { fn } of onAfterWSFn) {
-                const res = await fn?.(
-                  new MutableMessageEvent(arg0),
-                  WSObject.url,
-                  WSObject
-                );
-                if (res) arg0 = res;
-                if (res === null) return;
+                const res = await fn?.(new MutableMessageEvent(arg0), WSObject.url, WSObject);
+                if (res)
+                  arg0 = res;
+                if (res === null)
+                  return;
               }
               arguments[0] = arg0;
               userFunc.apply(eventThis, arguments);
@@ -629,13 +645,11 @@
           const onMessageHandler = async function() {
             let arg0 = arguments[0];
             for (const { fn } of onAfterWSFn) {
-              const res = await fn?.(
-                new MutableMessageEvent(arg0),
-                WSObject.url,
-                WSObject
-              );
-              if (res) arg0 = res;
-              if (res === null) return;
+              const res = await fn?.(new MutableMessageEvent(arg0), WSObject.url, WSObject);
+              if (res)
+                arg0 = res;
+              if (res === null)
+                return;
             }
             arguments[0] = arg0;
             userFunc.apply(eventThis, arguments);
@@ -681,34 +695,29 @@
     this.type = o.type || "message";
     this.__proto__ = o.__proto__ || MessageEvent.__proto__;
   }
-  var onBeforeFetchFn, onAfterFetchFn, readyFetch, onBeforeOpenXHRFn, onBeforeSendXHRFn, onAfterSendXHRFn, readyXhr, modifyUrlWsFn, onBeforeWSFn, onAfterWSFn, readyWs;
-  var init_ajax_hook = __esm({
-    "scripts/content/helper/ajax-hook.js"() {
-      onBeforeFetchFn = [];
-      onAfterFetchFn = [];
-      readyFetch = false;
-      onBeforeOpenXHRFn = [];
-      onBeforeSendXHRFn = [];
-      onAfterSendXHRFn = [];
-      readyXhr = false;
-      modifyUrlWsFn = [];
-      onBeforeWSFn = [];
-      onAfterWSFn = [];
-      readyWs = false;
-    }
+  var onBeforeFetchFn, onAfterFetchFn, readyFetch = false, onBeforeOpenXHRFn, onBeforeSendXHRFn, onAfterSendXHRFn, readyXhr = false, modifyUrlWsFn, onBeforeWSFn, onAfterWSFn, readyWs = false;
+  var init_ajax_hook = __esm(() => {
+    onBeforeFetchFn = [];
+    onAfterFetchFn = [];
+    onBeforeOpenXHRFn = [];
+    onBeforeSendXHRFn = [];
+    onAfterSendXHRFn = [];
+    modifyUrlWsFn = [];
+    onBeforeWSFn = [];
+    onAfterWSFn = [];
   });
 
   // scripts/content/insta_blockSeenStory.js
   (async () => {
     console.log("FB AIO: Insta block seen story ENABLED");
-    const { notify: notify2 } = await Promise.resolve().then(() => (init_helper(), helper_exports));
-    const { hookXHR: hookXHR2 } = await Promise.resolve().then(() => (init_ajax_hook(), ajax_hook_exports));
+    const { notify: notify2 } = await Promise.resolve().then(() => (init_helper(), exports_helper));
+    const { hookXHR: hookXHR2 } = await Promise.resolve().then(() => (init_ajax_hook(), exports_ajax_hook));
     hookXHR2({
       onBeforeSend: ({ method, url, async, user, password }, dataSend) => {
         let s = dataSend?.toString() || "";
         if (s.includes("viewSeenAt") || s.includes("SeenMutation")) {
           notify2({
-            msg: "\u{1F440} FB AIO: instagram story seen BLOCKED"
+            msg: "\uD83D\uDC40 FB AIO: instagram story seen BLOCKED"
           });
           return null;
         }

@@ -14,6 +14,7 @@ const GLOBAL = {
       "fb_showTotalPostReactions",
       "fb_addDownloadVideoBtn",
       "fb_addVideoControlBtn",
+      "fb_blockSeenChat",
       "insta_blockSeenStory",
       "threads_addDownloadVideoBtn",
       "fb_stopNewFeed",
@@ -55,7 +56,7 @@ function main() {
           .catch(sendResponse);
         return true;
       }
-    }
+    },
   );
 
   browserApi.runtime.onMessage.addListener((request, sender, sendResponse) => {

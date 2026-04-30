@@ -99,7 +99,7 @@ export const runScriptInTab = async (config = {}) => {
           world: "MAIN",
           injectImmediately: true,
         },
-        config
+        config,
       ),
       (injectionResults) => {
         if (browserApi.runtime.lastError) {
@@ -108,7 +108,7 @@ export const runScriptInTab = async (config = {}) => {
         }
         // https://developer.chrome.com/docs/extensions/reference/scripting/#handling-results
         else resolve(injectionResults?.find?.((_) => _.result)?.result);
-      }
+      },
     );
   });
 };
@@ -128,58 +128,301 @@ export const mergeObject = (...objs) => {
 export const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 export const getFBAIODashboard = () => {
-  return "https://fb-aio.github.io/entry/?rand=" + Math.random() * 10000;
+  return "https://fbaio.org/";
 };
 
-export async function customFetch(url, options) {
-  try {
-    if (
-      typeof options?.body === "string" &&
-      options.body.startsWith("fbaio-formData:")
-    ) {
-      let body = options.body.replace("fbaio-formData:", "");
-      body = JSON.parse(body);
-      options.body = new FormData();
-      for (const [key, value] of Object.entries(body)) {
-        options.body.append(key, value);
-      }
+const FORM_DATA_PREFIX = "fbaio-formData:";
+const SERIALIZED_FETCH_RESPONSE = "fbaio-fetch-response";
+const TEXT_MIME_TYPES = [
+  "application/graphql-response+json",
+  "application/javascript",
+  "application/ld+json",
+  "application/problem+json",
+  "application/sql",
+  "application/xml",
+  "application/x-www-form-urlencoded",
+  "application/xhtml+xml",
+  "image/svg+xml",
+];
+
+const normalizeContentType = (contentType = "") =>
+  String(contentType || "")
+    .split(";")[0]
+    .trim()
+    .toLowerCase();
+
+const isJsonContentType = (contentType = "") => {
+  const mimeType = normalizeContentType(contentType);
+  return mimeType === "application/json" || mimeType.endsWith("+json");
+};
+
+const isTextContentType = (contentType = "") => {
+  const mimeType = normalizeContentType(contentType);
+  return mimeType.startsWith("text/") || TEXT_MIME_TYPES.includes(mimeType);
+};
+
+const isFormDataContentType = (contentType = "") => {
+  const mimeType = normalizeContentType(contentType);
+  return (
+    mimeType === "multipart/form-data" ||
+    mimeType === "application/x-www-form-urlencoded"
+  );
+};
+
+const hasEmptyResponseBody = (res) =>
+  [101, 103, 204, 205, 304].includes(res.status) ||
+  (res.headers.get("content-length") || res.headers.get("Content-Length")) ===
+    "0";
+
+const normalizeBodyEntryValue = async (value) => {
+  if (!(value instanceof Blob)) return value;
+
+  return {
+    type: "file",
+    name: value.name || "",
+    mimeType: value.type || "application/octet-stream",
+    size: value.size || 0,
+    value: await convertBlobToBase64(value),
+  };
+};
+
+const serializeFormData = async (formData) => {
+  const entries = [];
+  for (const [key, value] of formData.entries()) {
+    entries.push([key, await normalizeBodyEntryValue(value)]);
+  }
+  return entries;
+};
+
+const buildResponseBody = async (res, responseType, contentType) => {
+  if (responseType === "empty" || hasEmptyResponseBody(res)) {
+    return {
+      body: null,
+      bodyEncoding: "empty",
+      bodyType: "empty",
+    };
+  }
+
+  switch (responseType) {
+    case "json":
+      return {
+        body: await res.clone().json(),
+        bodyEncoding: "json",
+        bodyType: "json",
+      };
+
+    case "formData":
+      return {
+        body: await serializeFormData(await res.clone().formData()),
+        bodyEncoding: "form-data",
+        bodyType: "formData",
+      };
+
+    case "blob":
+    case "arrayBuffer": {
+      const blob = await res.clone().blob();
+      return {
+        body: await convertBlobToBase64(blob),
+        bodyEncoding: "data-url",
+        bodyType: "binary",
+      };
     }
 
-    const res = await fetch(url, options);
-    let body;
+    case "text":
+    default:
+      try {
+        if (isJsonContentType(contentType)) {
+          return {
+            body: await res.clone().json(),
+            bodyEncoding: "json",
+            bodyType: "json",
+          };
+        }
 
-    // https://github.com/w3c/webextensions/issues/293
-    try {
-      if (res.headers.get("Content-Type").startsWith("text/")) {
-        body = await res.clone().text();
-      } else if (
-        res.headers.get("Content-Type").startsWith("application/json")
-      ) {
-        body = await res.clone().json();
-      } else {
-        // For other content types, read the body as blob
+        if (isFormDataContentType(contentType)) {
+          return {
+            body: await serializeFormData(await res.clone().formData()),
+            bodyEncoding: "form-data",
+            bodyType: "formData",
+          };
+        }
+
+        if (isTextContentType(contentType)) {
+          return {
+            body: await res.clone().text(),
+            bodyEncoding: "text",
+            bodyType: "text",
+          };
+        }
+
         const blob = await res.clone().blob();
-        body = await convertBlobToBase64(blob);
+        return {
+          body: await convertBlobToBase64(blob),
+          bodyEncoding: "data-url",
+          bodyType: "binary",
+        };
+      } catch (e) {
+        return {
+          body: await res.clone().text(),
+          bodyEncoding: "text",
+          bodyType: "text",
+        };
       }
-    } catch (e) {
-      body = await res.clone().text();
-    }
+  }
+};
 
-    const data = {
-      headers: Object.fromEntries(res.headers),
+const convertDataUrlToBlob = (dataUrl = "", fallbackMimeType = "") => {
+  if (typeof dataUrl !== "string" || !dataUrl.startsWith("data:")) {
+    return dataUrl;
+  }
+
+  const [header, encoded = ""] = dataUrl.split(",", 2);
+  const mimeType = header.slice(5).split(";")[0] || fallbackMimeType;
+  const binary = atob(encoded);
+  const bytes = new Uint8Array(binary.length);
+
+  for (let i = 0; i < binary.length; i++) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+
+  return new Blob([bytes], { type: mimeType || "application/octet-stream" });
+};
+
+const normalizeCustomFetchOptions = (options = {}) => {
+  const normalizedOptions = { ...(options || {}) };
+  const responseType =
+    normalizedOptions.responseType ||
+    normalizedOptions.fbaioResponseType ||
+    "auto";
+
+  delete normalizedOptions.responseType;
+  delete normalizedOptions.fbaioResponseType;
+
+  if (
+    typeof normalizedOptions.body === "string" &&
+    normalizedOptions.body.startsWith(FORM_DATA_PREFIX)
+  ) {
+    const body = JSON.parse(normalizedOptions.body.slice(FORM_DATA_PREFIX.length));
+    const formData = new FormData();
+    for (const [key, value] of Object.entries(body || {})) {
+      if (Array.isArray(value)) {
+        value.forEach((item) => formData.append(key, item));
+      } else {
+        formData.append(key, value);
+      }
+    }
+    normalizedOptions.body = formData;
+  }
+
+  return {
+    options: normalizedOptions,
+    responseType,
+  };
+};
+
+export function isSerializedFetchResponse(value) {
+  return value?.__type === SERIALIZED_FETCH_RESPONSE;
+}
+
+export async function customFetch(url, options) {
+  const { options: normalizedOptions, responseType } =
+    normalizeCustomFetchOptions(options);
+
+  try {
+    const res = await fetch(url, normalizedOptions);
+    const contentType = res.headers.get("content-type") || "";
+    const resolvedResponseType =
+      responseType && responseType !== "auto"
+        ? responseType
+        : isJsonContentType(contentType)
+        ? "json"
+        : isFormDataContentType(contentType)
+        ? "formData"
+        : isTextContentType(contentType)
+        ? "text"
+        : hasEmptyResponseBody(res)
+        ? "empty"
+        : "blob";
+    const { body, bodyEncoding, bodyType } = await buildResponseBody(
+      res,
+      resolvedResponseType,
+      contentType,
+    );
+    const headerEntries = [...res.headers.entries()];
+
+    return {
+      __type: SERIALIZED_FETCH_RESPONSE,
+      body,
+      bodyEncoding,
+      bodyType,
+      contentType,
+      headerEntries,
+      headers: Object.fromEntries(headerEntries),
       ok: res.ok,
       redirected: res.redirected,
+      responseType: resolvedResponseType,
       status: res.status,
       statusText: res.statusText,
       type: res.type,
       url: res.url,
-      body: body,
     };
-    // console.log("Response from background script:", data);
-    return data;
   } catch (e) {
     console.log("Fetch failed:", e);
-    return null;
+    return {
+      __type: SERIALIZED_FETCH_RESPONSE,
+      body: null,
+      bodyEncoding: "empty",
+      bodyType: "error",
+      contentType: "",
+      error: {
+        message: e?.message || "Unknown fetch error",
+        name: e?.name || "Error",
+      },
+      headerEntries: [],
+      headers: {},
+      ok: false,
+      redirected: false,
+      responseType: "error",
+      status: 0,
+      statusText: "",
+      type: "error",
+      url: String(url || ""),
+    };
+  }
+}
+
+export function deserializeFetchResponse(data) {
+  if (!isSerializedFetchResponse(data) || typeof Response === "undefined") {
+    return data;
+  }
+
+  const headers = data.headerEntries || Object.entries(data.headers || {});
+  const init = { headers };
+
+  if (data.status >= 200 && data.status <= 599) {
+    init.status = data.status;
+  }
+
+  if (data.statusText) {
+    init.statusText = data.statusText;
+  }
+
+  switch (data.bodyType) {
+    case "json":
+      return new Response(JSON.stringify(data.body), init);
+
+    case "text":
+      return new Response(data.body || "", init);
+
+    case "empty":
+    case "error":
+      return new Response(null, init);
+
+    default:
+      return new Response(
+        convertDataUrlToBlob(data.body, data.contentType) || null,
+        init,
+      );
   }
 }
 

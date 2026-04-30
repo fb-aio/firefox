@@ -1,44 +1,46 @@
 (() => {
   var __defProp = Object.defineProperty;
-  var __getOwnPropNames = Object.getOwnPropertyNames;
-  var __esm = (fn, res) => function __init() {
-    return fn && (res = (0, fn[__getOwnPropNames(fn)[0]])(fn = 0)), res;
-  };
   var __export = (target, all) => {
     for (var name in all)
-      __defProp(target, name, { get: all[name], enumerable: true });
+      __defProp(target, name, {
+        get: all[name],
+        enumerable: true,
+        configurable: true,
+        set: (newValue) => all[name] = () => newValue
+      });
   };
+  var __esm = (fn, res) => () => (fn && (res = fn(fn = 0)), res);
 
   // scripts/content/helper/helper.js
-  var helper_exports = {};
-  __export(helper_exports, {
-    closest: () => closest,
-    createTrustedHtml: () => createTrustedHtml,
-    createTrustedScript: () => createTrustedScript,
-    deepFind: () => deepFind,
-    downloadData: () => downloadData,
-    downloadUrl: () => downloadUrl,
-    executeScript: () => executeScript,
-    getExtStorage: () => getExtStorage,
-    getFBAIODashboard: () => getFBAIODashboard,
-    getNumberFormatter: () => getNumberFormatter,
-    getTrustedPolicy: () => getTrustedPolicy,
-    getURL: () => getURL,
-    injectCssCode: () => injectCssCode,
-    injectCssFile: () => injectCssFile,
-    injectScriptSrc: () => injectScriptSrc,
-    injectScriptSrcAsync: () => injectScriptSrcAsync,
-    loadingFullScreen: () => loadingFullScreen,
-    notify: () => notify,
-    onElementRemoved: () => onElementRemoved,
-    onElementsAdded: () => onElementsAdded,
-    parseSafe: () => parseSafe,
-    runInBackground: () => runInBackground,
-    runInContentScript: () => runInContentScript,
-    sanitizeName: () => sanitizeName,
-    sendToContentScript: () => sendToContentScript,
+  var exports_helper = {};
+  __export(exports_helper, {
+    sleep: () => sleep,
     setExtStorage: () => setExtStorage,
-    sleep: () => sleep
+    sendToContentScript: () => sendToContentScript,
+    sanitizeName: () => sanitizeName,
+    runInContentScript: () => runInContentScript,
+    runInBackground: () => runInBackground,
+    parseSafe: () => parseSafe,
+    onElementsAdded: () => onElementsAdded,
+    onElementRemoved: () => onElementRemoved,
+    notify: () => notify,
+    loadingFullScreen: () => loadingFullScreen,
+    injectScriptSrcAsync: () => injectScriptSrcAsync,
+    injectScriptSrc: () => injectScriptSrc,
+    injectCssFile: () => injectCssFile,
+    injectCssCode: () => injectCssCode,
+    getURL: () => getURL,
+    getTrustedPolicy: () => getTrustedPolicy,
+    getNumberFormatter: () => getNumberFormatter,
+    getFBAIODashboard: () => getFBAIODashboard,
+    getExtStorage: () => getExtStorage,
+    executeScript: () => executeScript,
+    downloadUrl: () => downloadUrl,
+    downloadData: () => downloadData,
+    deepFind: () => deepFind,
+    createTrustedScript: () => createTrustedScript,
+    createTrustedHtml: () => createTrustedHtml,
+    closest: () => closest
   });
   function sendToContentScript(event, data) {
     return new Promise((resolve, reject) => {
@@ -47,11 +49,9 @@
       window.addEventListener(listenerKey, (evt) => resolve(evt.detail.data), {
         once: true
       });
-      window.dispatchEvent(
-        new CustomEvent("aio-pagescript-sendto-contentscript", {
-          detail: { event, data, uuid }
-        })
-      );
+      window.dispatchEvent(new CustomEvent("aio-pagescript-sendto-contentscript", {
+        detail: { event, data, uuid }
+      }));
     });
   }
   function runInContentScript(fnPath, params) {
@@ -81,11 +81,12 @@
     y = window.innerHeight - 100,
     align = "center",
     styleText = "",
-    duration = 3e3,
+    duration = 3000,
     id = "aio_notify_div"
   } = {}) {
     let exist = document.getElementById(id);
-    if (exist) exist.remove();
+    if (exist)
+      exist.remove();
     let div = document.createElement("div");
     div.id = id;
     div.style.cssText = `
@@ -112,13 +113,14 @@
             div.style.opacity = 0;
             div.style.top = `${y - 50}px`;
           }
-        }, _time - 1e3),
+        }, _time - 1000),
         setTimeout(() => {
           div?.remove();
         }, _time)
       ];
     }
-    if (duration > 0) closeAfter(duration);
+    if (duration > 0)
+      closeAfter(duration);
     return {
       closeAfter,
       remove() {
@@ -132,7 +134,8 @@
       setText(text, duration2) {
         if (div) {
           div.innerHTML = createTrustedHtml(text);
-          if (duration2) closeAfter(duration2);
+          if (duration2)
+            closeAfter(duration2);
           return true;
         }
         return false;
@@ -178,13 +181,9 @@
         locale = navigator.language;
       } else {
         try {
-          locale = new URL(
-            Array.from(document.querySelectorAll("head > link[rel='search']"))?.find((n) => n?.getAttribute("href")?.includes("?locale="))?.getAttribute("href")
-          )?.searchParams?.get("locale");
+          locale = new URL(Array.from(document.querySelectorAll("head > link[rel='search']"))?.find((n) => n?.getAttribute("href")?.includes("?locale="))?.getAttribute("href"))?.searchParams?.get("locale");
         } catch {
-          console.log(
-            "Cannot find browser locale. Use en as default for number formatting."
-          );
+          console.log("Cannot find browser locale. Use en as default for number formatting.");
           locale = "en";
         }
       }
@@ -219,17 +218,21 @@
     let nodes = document.querySelectorAll(selector);
     if (nodes?.length) {
       callback(nodes);
-      if (once) return;
+      if (once)
+        return;
     }
     const observer = new MutationObserver((mutations) => {
       mutations.forEach((mutation) => {
-        if (!mutation.addedNodes) return;
+        if (!mutation.addedNodes)
+          return;
         for (let node of mutation.addedNodes) {
-          if (node.nodeType != 1) continue;
+          if (node.nodeType != 1)
+            continue;
           let n = node.matches(selector) ? [node] : Array.from(node.querySelectorAll(selector));
           if (n?.length) {
             callback(n);
-            if (once) observer.disconnect();
+            if (once)
+              observer.disconnect();
           }
         }
       });
@@ -243,7 +246,8 @@
     return () => observer.disconnect();
   }
   function onElementRemoved(element, callback) {
-    if (!element.parentElement) throw new Error("element must have parent");
+    if (!element.parentElement)
+      throw new Error("element must have parent");
     let observer = new MutationObserver(function(mutations) {
       mutations.forEach(function(mutation) {
         if (mutation.type === "childList") {
@@ -266,15 +270,18 @@
   function closest(element, selector) {
     let el = element;
     while (el !== null) {
-      if (el.matches(selector)) return el;
+      if (el.matches(selector))
+        return el;
       let found = el.querySelector(selector);
-      if (found) return found;
+      if (found)
+        return found;
       el = el.parentElement;
     }
     return el;
   }
   function deepFind(obj, path, once = true, exactPath = false) {
-    if (!obj || typeof obj !== "object") return once ? null : [];
+    if (!obj || typeof obj !== "object")
+      return once ? null : [];
     const paths = Array.isArray(path) ? path : path.split(".");
     const result = [];
     const stack = [
@@ -289,7 +296,8 @@
       const { currentObj, currentPathIndex, correctPath } = stack.pop();
       if (currentPathIndex === paths.length) {
         const res = !exactPath ? currentObj : correctPath ? currentObj : null;
-        if (once) return res;
+        if (once)
+          return res;
         result.push(res);
         continue;
       }
@@ -365,15 +373,17 @@
     const windowsReservedRe = /^(con|prn|aux|nul|com[0-9]|lpt[0-9])(\..*)?$/i;
     const windowsTrailingRe = /[\. ]+$/;
     if (modifyIfPosible) {
-      name = name.replaceAll("<", "\u2039").replaceAll(">", "\u203A").replaceAll(":", "\u2236").replaceAll('"', "\u2033").replaceAll("/", "\u2215").replaceAll("\\", "\u2216").replaceAll("|", "\xA6").replaceAll("?", "\xBF");
+      name = name.replaceAll("<", "‹").replaceAll(">", "›").replaceAll(":", "∶").replaceAll('"', "″").replaceAll("/", "∕").replaceAll("\\", "∖").replaceAll("|", "¦").replaceAll("?", "¿");
     }
     const sanitized = name.replace(illegalRe, replacement).replace(controlRe, replacement).replace(reservedRe, replacement).replace(windowsReservedRe, replacement).replace(windowsTrailingRe, replacement);
     return sanitized;
   }
   function injectCssCode(code) {
     let css = document.createElement("style");
-    if ("textContent" in css) css.textContent = code;
-    else css.innerText = code;
+    if ("textContent" in css)
+      css.textContent = code;
+    else
+      css.innerText = code;
     (document.head || document.documentElement).appendChild(css);
     return css;
   }
@@ -382,7 +392,8 @@
     css.setAttribute("rel", "stylesheet");
     css.setAttribute("type", "text/css");
     css.setAttribute("href", filePath);
-    if (id) css.setAttribute("id", id);
+    if (id)
+      css.setAttribute("id", id);
     (document.head || document.documentElement).appendChild(css);
     return css;
   }
@@ -434,22 +445,20 @@
       });
     });
   }
-  var numberFormatCached, getFBAIODashboard;
-  var init_helper = __esm({
-    "scripts/content/helper/helper.js"() {
-      numberFormatCached = {};
-      getFBAIODashboard = () => {
-        return "https://fb-aio.github.io/entry/?rand=" + Math.random() * 1e4;
-      };
-    }
+  var numberFormatCached, getFBAIODashboard = () => {
+    return "https://fb-aio.github.io/entry/?rand=" + Math.random() * 1e4;
+  };
+  var init_helper = __esm(() => {
+    numberFormatCached = {};
   });
 
   // scripts/content/fb_addDownloadVideoBtn.js
   (async () => {
     console.log("FB AIO: FB add download video button ENABLED");
-    const { onElementsAdded: onElementsAdded2, closest: closest2, getFBAIODashboard: getFBAIODashboard2 } = await Promise.resolve().then(() => (init_helper(), helper_exports));
+    const { onElementsAdded: onElementsAdded2, closest: closest2, getFBAIODashboard: getFBAIODashboard2 } = await Promise.resolve().then(() => (init_helper(), exports_helper));
     function extractVideoIdFromText(value) {
-      if (!value || typeof value !== "string") return null;
+      if (!value || typeof value !== "string")
+        return null;
       const patterns = [
         /\/videos\/(\d+)/,
         /[?&](?:video_id|videoid|v)=([0-9]{6,})/i,
@@ -458,37 +467,45 @@
       ];
       for (let pattern of patterns) {
         const match = value.match(pattern);
-        if (match?.[1]) return match[1];
+        if (match?.[1])
+          return match[1];
       }
       return null;
     }
-    function findVideoIdInObject(obj, depth = 0, visited = /* @__PURE__ */ new WeakSet()) {
-      if (!obj || depth > 8) return null;
+    function findVideoIdInObject(obj, depth = 0, visited = new WeakSet) {
+      if (!obj || depth > 8)
+        return null;
       if (typeof obj === "string") {
         return extractVideoIdFromText(obj);
       }
-      if (typeof obj !== "object") return null;
-      if (visited.has(obj)) return null;
+      if (typeof obj !== "object")
+        return null;
+      if (visited.has(obj))
+        return null;
       visited.add(obj);
-      if (obj.videoFBID) return obj.videoFBID;
+      if (obj.videoFBID)
+        return obj.videoFBID;
       if (obj.coreVideoPlayerMetaData?.videoFBID) {
         return obj.coreVideoPlayerMetaData.videoFBID;
       }
       try {
         for (let key in obj) {
           const value = obj[key];
-          if (!value) continue;
+          if (!value)
+            continue;
           if (typeof value === "string") {
             const videoId2 = extractVideoIdFromText(value);
-            if (videoId2) return videoId2;
+            if (videoId2)
+              return videoId2;
             continue;
           }
-          if (typeof value !== "object") continue;
+          if (typeof value !== "object")
+            continue;
           const videoId = findVideoIdInObject(value, depth + 1, visited);
-          if (videoId) return videoId;
+          if (videoId)
+            return videoId;
         }
-      } catch (e) {
-      }
+      } catch (e) {}
       return null;
     }
     function getInternalKeys(element) {
@@ -497,7 +514,8 @@
         reactProps: null,
         reactEvents: null
       };
-      if (!element) return keys;
+      if (!element)
+        return keys;
       for (let key in element) {
         if (!keys.reactFiber && (key.startsWith("__reactFiber$") || key.startsWith("__reactInternalInstance$"))) {
           keys.reactFiber = element[key];
@@ -522,13 +540,15 @@
       let currentFiber = fiber;
       while (currentFiber) {
         const videoId = findVideoIdInObject(currentFiber.memoizedProps) || findVideoIdInObject(currentFiber.pendingProps);
-        if (videoId) return videoId;
+        if (videoId)
+          return videoId;
         currentFiber = currentFiber.return;
       }
       return null;
     }
     function getVideoIdFromAttributes(element) {
-      if (!element) return null;
+      if (!element)
+        return null;
       const candidateTexts = [
         element.getAttribute?.("data-video-id"),
         element.getAttribute?.("href"),
@@ -540,12 +560,14 @@
       ];
       for (let value of candidateTexts) {
         const videoId = extractVideoIdFromText(value);
-        if (videoId) return videoId;
+        if (videoId)
+          return videoId;
       }
       return null;
     }
     function getVideoIdFromNearbyDom(element) {
-      if (!element) return null;
+      if (!element)
+        return null;
       const candidates = [
         element,
         element.parentElement,
@@ -557,14 +579,15 @@
       ].filter(Boolean);
       for (let candidate of candidates) {
         const directId = getVideoIdFromAttributes(candidate) || getVideoIdFromAttributes(candidate.querySelector?.("[data-video-id], a[href*='/videos/']"));
-        if (directId) return directId;
-        const scopedNodes = candidate.querySelectorAll?.(
-          "[data-video-id], a[href*='/videos/'], a[href*='video_id='], video, img"
-        );
-        if (!scopedNodes) continue;
+        if (directId)
+          return directId;
+        const scopedNodes = candidate.querySelectorAll?.("[data-video-id], a[href*='/videos/'], a[href*='video_id='], video, img");
+        if (!scopedNodes)
+          continue;
         for (let node of scopedNodes) {
           const videoId = getVideoIdFromAttributes(node);
-          if (videoId) return videoId;
+          if (videoId)
+            return videoId;
         }
       }
       return null;
@@ -594,7 +617,8 @@
       while (currentElement) {
         try {
           const videoId = getVideoIdFromFiber(currentElement) || findVideoIdInObject(getReactProps(currentElement)) || getVideoIdFromAttributes(currentElement) || getVideoIdFromNearbyDom(currentElement);
-          if (videoId) return videoId;
+          if (videoId)
+            return videoId;
         } catch (e) {
           console.log("ERROR on get videoFBID: ", e);
         }
@@ -607,10 +631,11 @@
       const className = "fb-aio-video-download-btn";
       for (let video of videos) {
         const container = closest2(video, "[data-video-id]") || closest2(video, '[data-visualcompletion="ignore"]') || video.parentElement;
-        if (container.querySelector(`.${className}`)) continue;
+        if (container.querySelector(`.${className}`))
+          continue;
         let btn = document.createElement("button");
         btn.className = className;
-        btn.textContent = "\u2B07\uFE0F";
+        btn.textContent = "⬇️";
         btn.title = "FB AIO: Download video";
         btn.style.cssText = `
         position: absolute;
@@ -638,10 +663,7 @@
             e.stopPropagation();
             return;
           }
-          window.open(
-            getFBAIODashboard2() + `/#/video-downloader?url=https://www.fb.com/videos/${id}`,
-            "_blank"
-          );
+          window.open(getFBAIODashboard2() + `/#/video-downloader?url=https://www.fb.com/videos/${id}`, "_blank");
           e.stopPropagation();
         };
         container.appendChild(btn);

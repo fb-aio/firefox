@@ -1,30 +1,34 @@
 (() => {
   var __defProp = Object.defineProperty;
-  var __getOwnPropNames = Object.getOwnPropertyNames;
-  var __esm = (fn, res) => function __init() {
-    return fn && (res = (0, fn[__getOwnPropNames(fn)[0]])(fn = 0)), res;
-  };
   var __export = (target, all) => {
     for (var name in all)
-      __defProp(target, name, { get: all[name], enumerable: true });
+      __defProp(target, name, {
+        get: all[name],
+        enumerable: true,
+        configurable: true,
+        set: (newValue) => all[name] = () => newValue
+      });
   };
+  var __esm = (fn, res) => () => (fn && (res = fn(fn = 0)), res);
 
   // scripts/content/helper/ajax-hook.js
-  var ajax_hook_exports = {};
-  __export(ajax_hook_exports, {
-    hookFetch: () => hookFetch,
+  var exports_ajax_hook = {};
+  __export(exports_ajax_hook, {
+    hookXHR: () => hookXHR,
     hookWS: () => hookWS,
-    hookXHR: () => hookXHR
+    hookFetch: () => hookFetch
   });
   function hook(configs = []) {
     const unsubFn = [];
     for (const { fn, arr } of configs) {
-      if (typeof fn !== "function" || !Array.isArray(arr)) continue;
+      if (typeof fn !== "function" || !Array.isArray(arr))
+        continue;
       const id = randId();
       arr.push({ fn, id });
       unsubFn.push(() => {
         const index = arr.findIndex((e) => e.id === id);
-        if (index !== -1) arr.splice(index, 1);
+        if (index !== -1)
+          arr.splice(index, 1);
       });
     }
     return () => {
@@ -50,11 +54,11 @@
       }
       let request = { url, options };
       for (const { fn } of onBeforeFetchFn) {
-        const res = await fn?.(request.url, request.options)?.catch(
-          console.error
-        );
-        if (res) request = res;
-        if (res === null) return null;
+        const res = await fn?.(request.url, request.options)?.catch(console.error);
+        if (res)
+          request = res;
+        if (res === null)
+          return null;
       }
       if (urlOrRequest instanceof Request) {
         try {
@@ -67,11 +71,11 @@
       }
       let response = await originalFetch(urlOrRequest, options);
       for (const { fn } of onAfterFetchFn) {
-        const res = await fn?.(request.url, request.options, response)?.catch(
-          console.error
-        );
-        if (res) response = res;
-        if (res === null) return null;
+        const res = await fn?.(request.url, request.options, response)?.catch(console.error);
+        if (res)
+          response = res;
+        if (res === null)
+          return null;
       }
       return response;
     };
@@ -97,8 +101,10 @@
           p = { method, url, async, user, password };
           for (const { fn } of onBeforeOpenXHRFn) {
             const res = await fn?.(p);
-            if (res) p = res;
-            if (res === null) return;
+            if (res)
+              p = res;
+            if (res === null)
+              return;
           }
           return open.apply(this, [
             p.method,
@@ -113,8 +119,10 @@
         instance.send = async function(dataSend) {
           for (const { fn } of onBeforeSendXHRFn) {
             const res = await fn?.(p, dataSend);
-            if (res) dataSend = res;
-            if (res === null) return;
+            if (res)
+              dataSend = res;
+            if (res === null)
+              return;
           }
           instance.addEventListener("load", function() {
             for (const { fn } of onAfterSendXHRFn)
@@ -143,8 +151,10 @@
       let WSObject;
       for (let { fn } of modifyUrlWsFn) {
         let _url = fn?.(url);
-        if (_url) url = _url;
-        if (_url === null) return null;
+        if (_url)
+          url = _url;
+        if (_url === null)
+          return null;
       }
       this.url = url;
       this.protocols = protocols;
@@ -158,8 +168,10 @@
         let arg0 = arguments[0];
         for (const { fn } of onBeforeWSFn) {
           const res = fn?.(arg0, WSObject.url, WSObject);
-          if (res) arg0 = res;
-          if (res === null) return;
+          if (res)
+            arg0 = res;
+          if (res === null)
+            return;
         }
         arguments[0] = arg0;
         _send.apply(this, arguments);
@@ -168,17 +180,15 @@
       WSObject.addEventListener = function() {
         const eventThis = this;
         if (arguments[0] === "message") {
-          arguments[1] = /* @__PURE__ */ function(userFunc) {
+          arguments[1] = function(userFunc) {
             return async function instrumentAddEventListener() {
               let arg0 = arguments[0];
               for (const { fn } of onAfterWSFn) {
-                const res = await fn?.(
-                  new MutableMessageEvent(arg0),
-                  WSObject.url,
-                  WSObject
-                );
-                if (res) arg0 = res;
-                if (res === null) return;
+                const res = await fn?.(new MutableMessageEvent(arg0), WSObject.url, WSObject);
+                if (res)
+                  arg0 = res;
+                if (res === null)
+                  return;
               }
               arguments[0] = arg0;
               userFunc.apply(eventThis, arguments);
@@ -194,13 +204,11 @@
           const onMessageHandler = async function() {
             let arg0 = arguments[0];
             for (const { fn } of onAfterWSFn) {
-              const res = await fn?.(
-                new MutableMessageEvent(arg0),
-                WSObject.url,
-                WSObject
-              );
-              if (res) arg0 = res;
-              if (res === null) return;
+              const res = await fn?.(new MutableMessageEvent(arg0), WSObject.url, WSObject);
+              if (res)
+                arg0 = res;
+              if (res === null)
+                return;
             }
             arguments[0] = arg0;
             userFunc.apply(eventThis, arguments);
@@ -246,53 +254,48 @@
     this.type = o.type || "message";
     this.__proto__ = o.__proto__ || MessageEvent.__proto__;
   }
-  var onBeforeFetchFn, onAfterFetchFn, readyFetch, onBeforeOpenXHRFn, onBeforeSendXHRFn, onAfterSendXHRFn, readyXhr, modifyUrlWsFn, onBeforeWSFn, onAfterWSFn, readyWs;
-  var init_ajax_hook = __esm({
-    "scripts/content/helper/ajax-hook.js"() {
-      onBeforeFetchFn = [];
-      onAfterFetchFn = [];
-      readyFetch = false;
-      onBeforeOpenXHRFn = [];
-      onBeforeSendXHRFn = [];
-      onAfterSendXHRFn = [];
-      readyXhr = false;
-      modifyUrlWsFn = [];
-      onBeforeWSFn = [];
-      onAfterWSFn = [];
-      readyWs = false;
-    }
+  var onBeforeFetchFn, onAfterFetchFn, readyFetch = false, onBeforeOpenXHRFn, onBeforeSendXHRFn, onAfterSendXHRFn, readyXhr = false, modifyUrlWsFn, onBeforeWSFn, onAfterWSFn, readyWs = false;
+  var init_ajax_hook = __esm(() => {
+    onBeforeFetchFn = [];
+    onAfterFetchFn = [];
+    onBeforeOpenXHRFn = [];
+    onBeforeSendXHRFn = [];
+    onAfterSendXHRFn = [];
+    modifyUrlWsFn = [];
+    onBeforeWSFn = [];
+    onAfterWSFn = [];
   });
 
   // scripts/content/helper/helper.js
-  var helper_exports = {};
-  __export(helper_exports, {
-    closest: () => closest,
-    createTrustedHtml: () => createTrustedHtml,
-    createTrustedScript: () => createTrustedScript,
-    deepFind: () => deepFind,
-    downloadData: () => downloadData,
-    downloadUrl: () => downloadUrl,
-    executeScript: () => executeScript,
-    getExtStorage: () => getExtStorage,
-    getFBAIODashboard: () => getFBAIODashboard,
-    getNumberFormatter: () => getNumberFormatter,
-    getTrustedPolicy: () => getTrustedPolicy,
-    getURL: () => getURL,
-    injectCssCode: () => injectCssCode,
-    injectCssFile: () => injectCssFile,
-    injectScriptSrc: () => injectScriptSrc,
-    injectScriptSrcAsync: () => injectScriptSrcAsync,
-    loadingFullScreen: () => loadingFullScreen,
-    notify: () => notify,
-    onElementRemoved: () => onElementRemoved,
-    onElementsAdded: () => onElementsAdded,
-    parseSafe: () => parseSafe,
-    runInBackground: () => runInBackground,
-    runInContentScript: () => runInContentScript,
-    sanitizeName: () => sanitizeName,
-    sendToContentScript: () => sendToContentScript,
+  var exports_helper = {};
+  __export(exports_helper, {
+    sleep: () => sleep,
     setExtStorage: () => setExtStorage,
-    sleep: () => sleep
+    sendToContentScript: () => sendToContentScript,
+    sanitizeName: () => sanitizeName,
+    runInContentScript: () => runInContentScript,
+    runInBackground: () => runInBackground,
+    parseSafe: () => parseSafe,
+    onElementsAdded: () => onElementsAdded,
+    onElementRemoved: () => onElementRemoved,
+    notify: () => notify,
+    loadingFullScreen: () => loadingFullScreen,
+    injectScriptSrcAsync: () => injectScriptSrcAsync,
+    injectScriptSrc: () => injectScriptSrc,
+    injectCssFile: () => injectCssFile,
+    injectCssCode: () => injectCssCode,
+    getURL: () => getURL,
+    getTrustedPolicy: () => getTrustedPolicy,
+    getNumberFormatter: () => getNumberFormatter,
+    getFBAIODashboard: () => getFBAIODashboard,
+    getExtStorage: () => getExtStorage,
+    executeScript: () => executeScript,
+    downloadUrl: () => downloadUrl,
+    downloadData: () => downloadData,
+    deepFind: () => deepFind,
+    createTrustedScript: () => createTrustedScript,
+    createTrustedHtml: () => createTrustedHtml,
+    closest: () => closest
   });
   function sendToContentScript(event, data) {
     return new Promise((resolve, reject) => {
@@ -301,11 +304,9 @@
       window.addEventListener(listenerKey, (evt) => resolve(evt.detail.data), {
         once: true
       });
-      window.dispatchEvent(
-        new CustomEvent("aio-pagescript-sendto-contentscript", {
-          detail: { event, data, uuid }
-        })
-      );
+      window.dispatchEvent(new CustomEvent("aio-pagescript-sendto-contentscript", {
+        detail: { event, data, uuid }
+      }));
     });
   }
   function runInContentScript(fnPath, params) {
@@ -335,11 +336,12 @@
     y = window.innerHeight - 100,
     align = "center",
     styleText = "",
-    duration = 3e3,
+    duration = 3000,
     id = "aio_notify_div"
   } = {}) {
     let exist = document.getElementById(id);
-    if (exist) exist.remove();
+    if (exist)
+      exist.remove();
     let div = document.createElement("div");
     div.id = id;
     div.style.cssText = `
@@ -366,13 +368,14 @@
             div.style.opacity = 0;
             div.style.top = `${y - 50}px`;
           }
-        }, _time - 1e3),
+        }, _time - 1000),
         setTimeout(() => {
           div?.remove();
         }, _time)
       ];
     }
-    if (duration > 0) closeAfter(duration);
+    if (duration > 0)
+      closeAfter(duration);
     return {
       closeAfter,
       remove() {
@@ -386,7 +389,8 @@
       setText(text, duration2) {
         if (div) {
           div.innerHTML = createTrustedHtml(text);
-          if (duration2) closeAfter(duration2);
+          if (duration2)
+            closeAfter(duration2);
           return true;
         }
         return false;
@@ -432,13 +436,9 @@
         locale = navigator.language;
       } else {
         try {
-          locale = new URL(
-            Array.from(document.querySelectorAll("head > link[rel='search']"))?.find((n) => n?.getAttribute("href")?.includes("?locale="))?.getAttribute("href")
-          )?.searchParams?.get("locale");
+          locale = new URL(Array.from(document.querySelectorAll("head > link[rel='search']"))?.find((n) => n?.getAttribute("href")?.includes("?locale="))?.getAttribute("href"))?.searchParams?.get("locale");
         } catch {
-          console.log(
-            "Cannot find browser locale. Use en as default for number formatting."
-          );
+          console.log("Cannot find browser locale. Use en as default for number formatting.");
           locale = "en";
         }
       }
@@ -473,17 +473,21 @@
     let nodes = document.querySelectorAll(selector);
     if (nodes?.length) {
       callback(nodes);
-      if (once) return;
+      if (once)
+        return;
     }
     const observer = new MutationObserver((mutations) => {
       mutations.forEach((mutation) => {
-        if (!mutation.addedNodes) return;
+        if (!mutation.addedNodes)
+          return;
         for (let node of mutation.addedNodes) {
-          if (node.nodeType != 1) continue;
+          if (node.nodeType != 1)
+            continue;
           let n = node.matches(selector) ? [node] : Array.from(node.querySelectorAll(selector));
           if (n?.length) {
             callback(n);
-            if (once) observer.disconnect();
+            if (once)
+              observer.disconnect();
           }
         }
       });
@@ -497,7 +501,8 @@
     return () => observer.disconnect();
   }
   function onElementRemoved(element, callback) {
-    if (!element.parentElement) throw new Error("element must have parent");
+    if (!element.parentElement)
+      throw new Error("element must have parent");
     let observer = new MutationObserver(function(mutations) {
       mutations.forEach(function(mutation) {
         if (mutation.type === "childList") {
@@ -520,15 +525,18 @@
   function closest(element, selector) {
     let el = element;
     while (el !== null) {
-      if (el.matches(selector)) return el;
+      if (el.matches(selector))
+        return el;
       let found = el.querySelector(selector);
-      if (found) return found;
+      if (found)
+        return found;
       el = el.parentElement;
     }
     return el;
   }
   function deepFind(obj, path, once = true, exactPath = false) {
-    if (!obj || typeof obj !== "object") return once ? null : [];
+    if (!obj || typeof obj !== "object")
+      return once ? null : [];
     const paths = Array.isArray(path) ? path : path.split(".");
     const result = [];
     const stack = [
@@ -543,7 +551,8 @@
       const { currentObj, currentPathIndex, correctPath } = stack.pop();
       if (currentPathIndex === paths.length) {
         const res = !exactPath ? currentObj : correctPath ? currentObj : null;
-        if (once) return res;
+        if (once)
+          return res;
         result.push(res);
         continue;
       }
@@ -619,15 +628,17 @@
     const windowsReservedRe = /^(con|prn|aux|nul|com[0-9]|lpt[0-9])(\..*)?$/i;
     const windowsTrailingRe = /[\. ]+$/;
     if (modifyIfPosible) {
-      name = name.replaceAll("<", "\u2039").replaceAll(">", "\u203A").replaceAll(":", "\u2236").replaceAll('"', "\u2033").replaceAll("/", "\u2215").replaceAll("\\", "\u2216").replaceAll("|", "\xA6").replaceAll("?", "\xBF");
+      name = name.replaceAll("<", "‹").replaceAll(">", "›").replaceAll(":", "∶").replaceAll('"', "″").replaceAll("/", "∕").replaceAll("\\", "∖").replaceAll("|", "¦").replaceAll("?", "¿");
     }
     const sanitized = name.replace(illegalRe, replacement).replace(controlRe, replacement).replace(reservedRe, replacement).replace(windowsReservedRe, replacement).replace(windowsTrailingRe, replacement);
     return sanitized;
   }
   function injectCssCode(code) {
     let css = document.createElement("style");
-    if ("textContent" in css) css.textContent = code;
-    else css.innerText = code;
+    if ("textContent" in css)
+      css.textContent = code;
+    else
+      css.innerText = code;
     (document.head || document.documentElement).appendChild(css);
     return css;
   }
@@ -636,7 +647,8 @@
     css.setAttribute("rel", "stylesheet");
     css.setAttribute("type", "text/css");
     css.setAttribute("href", filePath);
-    if (id) css.setAttribute("id", id);
+    if (id)
+      css.setAttribute("id", id);
     (document.head || document.documentElement).appendChild(css);
     return css;
   }
@@ -688,20 +700,17 @@
       });
     });
   }
-  var numberFormatCached, getFBAIODashboard;
-  var init_helper = __esm({
-    "scripts/content/helper/helper.js"() {
-      numberFormatCached = {};
-      getFBAIODashboard = () => {
-        return "https://fb-aio.github.io/entry/?rand=" + Math.random() * 1e4;
-      };
-    }
+  var numberFormatCached, getFBAIODashboard = () => {
+    return "https://fb-aio.github.io/entry/?rand=" + Math.random() * 1e4;
+  };
+  var init_helper = __esm(() => {
+    numberFormatCached = {};
   });
 
   // scripts/content/tiktok_addDownloadVideoBtn.js
   (async () => {
     console.log("FB AIO: Tiktok add download video button ENABLED");
-    const { hookFetch: hookFetch2 } = await Promise.resolve().then(() => (init_ajax_hook(), ajax_hook_exports));
+    const { hookFetch: hookFetch2 } = await Promise.resolve().then(() => (init_ajax_hook(), exports_ajax_hook));
     const {
       notify: notify2,
       downloadData: downloadData2,
@@ -709,8 +718,8 @@
       sanitizeName: sanitizeName2,
       injectCssCode: injectCssCode2,
       getFBAIODashboard: getFBAIODashboard2
-    } = await Promise.resolve().then(() => (init_helper(), helper_exports));
-    const videoById = /* @__PURE__ */ new Map();
+    } = await Promise.resolve().then(() => (init_helper(), exports_helper));
+    const videoById = new Map;
     window.fbaio_tiktok_addDownloadVideoBtn = () => videoById;
     notify2({
       msg: "FB AIO: Tiktok add download button ENABLED"
@@ -797,10 +806,9 @@
       container.classList.add("fb-aio-trigger", id);
       const btn = document.createElement("button");
       btn.style.cssText = btnStyle;
-      btn.textContent = "\u2B07\uFE0F";
+      btn.textContent = "⬇️";
       btn.title = "FB AIO: Download video";
-      btn.addEventListener("click", () => {
-      });
+      btn.addEventListener("click", () => {});
       container.appendChild(btn);
       const content = document.createElement("div");
       content.style.cssText = contentStyle;
@@ -808,48 +816,45 @@
       const fbaio = document.createElement("p");
       fbaio.textContent = "FB AIO";
       content.appendChild(fbaio);
-      const filename = sanitizeName2(
-        video.desc?.slice?.(0, 50) || video?.id || "tiktok_video"
-      );
+      const filename = sanitizeName2(video.desc?.slice?.(0, 50) || video?.id || "tiktok_video");
       const title = document.createElement("p");
       title.textContent = filename;
       content.appendChild(title);
       const btns = [
         {
-          text: "\u{1F3AC} Video - no watermark",
+          text: "\uD83C\uDFAC Video - no watermark",
           onClick: () => {
             window.open(video?.video?.playAddr, "_blank");
           }
         },
         {
-          text: "\u{1F3AC} Video - watermark",
+          text: "\uD83C\uDFAC Video - watermark",
           onClick: () => {
             const url = video?.video?.downloadAddr;
             window.open(url, "_blank");
           }
         },
         video?.music?.id ? {
-          text: "\u{1F3A7} Music: " + video?.music?.title,
+          text: "\uD83C\uDFA7 Music: " + video?.music?.title,
           onClick: () => {
             const url = video?.music?.playUrl;
-            if (url) window.open(url, "_blank");
-            else alert("Can not download this music (no URL)");
+            if (url)
+              window.open(url, "_blank");
+            else
+              alert("Can not download this music (no URL)");
           }
         } : null,
         {
-          text: "\u{1F4DD} JSON Data",
+          text: "\uD83D\uDCDD JSON Data",
           onClick: () => {
             downloadData2(JSON.stringify(video, null, 4), filename + ".json");
           }
         },
         {
-          text: "\u{1F4DD} ALL " + videoById.size + " videos (JSON)",
+          text: "\uD83D\uDCDD ALL " + videoById.size + " videos (JSON)",
           onClick: () => {
             const data = Array.from(videoById.values());
-            downloadData2(
-              JSON.stringify(data, null, 4),
-              data.length + "_tiktok_videos.json"
-            );
+            downloadData2(JSON.stringify(data, null, 4), data.length + "_tiktok_videos.json");
           }
         }
       ].filter(Boolean);
@@ -865,7 +870,7 @@
     const allId = "fb-aio-tiktok-download-all-btn";
     const downloadAllBtn = document.createElement("button");
     downloadAllBtn.id = allId;
-    downloadAllBtn.textContent = "\u2B07\uFE0F Download all";
+    downloadAllBtn.textContent = "⬇️ Download all";
     downloadAllBtn.title = "FB AIO: Download all videos";
     downloadAllBtn.style.cssText = `
     padding: 10px;
@@ -874,21 +879,14 @@
     color: white;
   `;
     downloadAllBtn.addEventListener("click", () => {
-      window.open(
-        getFBAIODashboard2() + `/#/bulk-downloader?platform=Tiktok&targetId=${location.href}`,
-        "_blank"
-      );
+      window.open(getFBAIODashboard2() + `/#/bulk-downloader?platform=Tiktok&targetId=${location.href}`, "_blank");
     });
     setInterval(() => {
-      const user_btn_row = document.querySelector(
-        '[data-e2e="user-page"] [class*="DivButtonPanelWrapper"]'
-      );
+      const user_btn_row = document.querySelector('[data-e2e="user-page"] [class*="DivButtonPanelWrapper"]');
       if (user_btn_row && !user_btn_row.querySelector(`#${allId}`)) {
         user_btn_row.append(downloadAllBtn);
       }
-      const feed_videos = Array.from(
-        document.querySelectorAll('[data-e2e="feed-video"]')
-      );
+      const feed_videos = Array.from(document.querySelectorAll('[data-e2e="feed-video"]'));
       for (const feed of feed_videos) {
         const actionBar = closest2(feed, '[class*="SectionActionBarContainer"]');
         if (actionBar && !hasDownloadBtn(actionBar)) {
@@ -907,14 +905,8 @@
           }
         }
       }
-      const search_videos = Array.from(
-        document.querySelectorAll(
-          '[data-e2e="search_top-item"], [data-e2e="search_video-item"]'
-        )
-      );
-      const explore_videos = Array.from(
-        document.querySelectorAll('[data-e2e="explore-item"]')
-      );
+      const search_videos = Array.from(document.querySelectorAll('[data-e2e="search_top-item"], [data-e2e="search_video-item"]'));
+      const explore_videos = Array.from(document.querySelectorAll('[data-e2e="explore-item"]'));
       for (const item of [...explore_videos, ...search_videos]) {
         if (!hasDownloadBtn(item)) {
           const vidId = item.querySelector('a[href*="tiktok.com"][href*="/video/"]')?.href?.split("video/")?.at(-1);
@@ -938,9 +930,7 @@
           }
         }
       }
-      const detail_vids = Array.from(
-        document.querySelectorAll('[data-e2e="detail-video"]')
-      );
+      const detail_vids = Array.from(document.querySelectorAll('[data-e2e="detail-video"]'));
       for (const detail of detail_vids) {
         const vidId = detail.querySelector('[id*="xgwrapper"]')?.id?.split("-")?.at(-1);
         if (!hasDownloadBtn(detail, vidId)) {
@@ -965,11 +955,7 @@
           }
         }
       }
-      const you_may_like_vids = Array.from(
-        document.querySelectorAll(
-          '[class*="DivItemContainer"], [class*="DivItemContainerV2"]'
-        )
-      );
+      const you_may_like_vids = Array.from(document.querySelectorAll('[class*="DivItemContainer"], [class*="DivItemContainerV2"]'));
       for (const vid of you_may_like_vids) {
         if (!hasDownloadBtn(vid)) {
           const vidId = vid.querySelector('a[href*="/video/"]')?.href?.split("video/")?.at(-1);
@@ -994,11 +980,7 @@
           }
         }
       }
-      const fullscreen_vids = Array.from(
-        document.querySelectorAll(
-          '[role="dialog"][class*="DivBrowserModeContainer"]'
-        )
-      );
+      const fullscreen_vids = Array.from(document.querySelectorAll('[role="dialog"][class*="DivBrowserModeContainer"]'));
       for (const full of fullscreen_vids) {
         const vidId = full.querySelector('[data-e2e="browse-video"] [id*="xgwrapper"]')?.id?.split("-")?.at(-1);
         if (!hasDownloadBtn(full, vidId)) {
@@ -1020,13 +1002,11 @@
           }
         }
       }
-    }, 1e3);
+    }, 1000);
     window.addEventListener("load", () => {
       const interval = setInterval(() => {
         if (window?.__UNIVERSAL_DATA_FOR_REHYDRATION__) {
-          const data = JSON.parse(
-            window.__UNIVERSAL_DATA_FOR_REHYDRATION__.textContent
-          );
+          const data = JSON.parse(window.__UNIVERSAL_DATA_FOR_REHYDRATION__.textContent);
           const vidData = data?.__DEFAULT_SCOPE__?.["webapp.video-detail"]?.itemInfo?.itemStruct;
           const id2 = vidData?.video?.id || vidData?.id;
           if (id2) {
@@ -1034,7 +1014,7 @@
             clearInterval(interval);
           }
         }
-      }, 1e3);
+      }, 1000);
     });
   })();
 })();

@@ -1,31 +1,35 @@
 (() => {
   var __defProp = Object.defineProperty;
-  var __getOwnPropNames = Object.getOwnPropertyNames;
-  var __esm = (fn, res) => function __init() {
-    return fn && (res = (0, fn[__getOwnPropNames(fn)[0]])(fn = 0)), res;
-  };
   var __export = (target, all) => {
     for (var name in all)
-      __defProp(target, name, { get: all[name], enumerable: true });
+      __defProp(target, name, {
+        get: all[name],
+        enumerable: true,
+        configurable: true,
+        set: (newValue) => all[name] = () => newValue
+      });
   };
+  var __esm = (fn, res) => () => (fn && (res = fn(fn = 0)), res);
 
   // scripts/utils/index.js
-  var utils_exports = {};
-  __export(utils_exports, {
-    Storage: () => Storage,
-    convertBlobToBase64: () => convertBlobToBase64,
-    customFetch: () => customFetch,
-    getCurrentTab: () => getCurrentTab,
-    getExtensionId: () => getExtensionId,
-    getFBAIODashboard: () => getFBAIODashboard,
-    getUserId: () => getUserId,
-    hasUserId: () => hasUserId,
-    mergeObject: () => mergeObject,
-    runFunc: () => runFunc,
-    runScriptInCurrentTab: () => runScriptInCurrentTab,
-    runScriptInTab: () => runScriptInTab,
+  var exports_utils = {};
+  __export(exports_utils, {
+    sleep: () => sleep,
     setUserId: () => setUserId,
-    sleep: () => sleep
+    runScriptInTab: () => runScriptInTab,
+    runScriptInCurrentTab: () => runScriptInCurrentTab,
+    runFunc: () => runFunc,
+    mergeObject: () => mergeObject,
+    isSerializedFetchResponse: () => isSerializedFetchResponse,
+    hasUserId: () => hasUserId,
+    getUserId: () => getUserId,
+    getFBAIODashboard: () => getFBAIODashboard,
+    getExtensionId: () => getExtensionId,
+    getCurrentTab: () => getCurrentTab,
+    deserializeFetchResponse: () => deserializeFetchResponse,
+    customFetch: () => customFetch,
+    convertBlobToBase64: () => convertBlobToBase64,
+    Storage: () => Storage
   });
   function runFunc(fnPath = "", params = [], global = chrome) {
     return new Promise((resolve) => {
@@ -41,7 +45,8 @@
         }
         return p;
       });
-      if (typeof fn !== "function") return resolve(fn);
+      if (typeof fn !== "function")
+        return resolve(fn);
       try {
         let res = fn(..._params);
         if (!hasCallback) {
@@ -77,7 +82,7 @@
       uid = (await browserApi.cookies.get({
         url: "https://www.facebook.com",
         name: "c_user"
-      }))?.value || (/* @__PURE__ */ new Date()).getTime();
+      }))?.value || new Date().getTime();
     }
     CACHED.userID = uid;
     await Storage.set("userId", uid);
@@ -86,144 +91,306 @@
     let tabs = await browserApi.tabs.query({ active: true, currentWindow: true });
     return tabs?.[0];
   }
+  function isSerializedFetchResponse(value) {
+    return value?.__type === SERIALIZED_FETCH_RESPONSE;
+  }
   async function customFetch(url, options) {
+    const { options: normalizedOptions, responseType } = normalizeCustomFetchOptions(options);
     try {
-      if (typeof options?.body === "string" && options.body.startsWith("fbaio-formData:")) {
-        let body2 = options.body.replace("fbaio-formData:", "");
-        body2 = JSON.parse(body2);
-        options.body = new FormData();
-        for (const [key, value] of Object.entries(body2)) {
-          options.body.append(key, value);
-        }
-      }
-      const res = await fetch(url, options);
-      let body;
-      try {
-        if (res.headers.get("Content-Type").startsWith("text/")) {
-          body = await res.clone().text();
-        } else if (res.headers.get("Content-Type").startsWith("application/json")) {
-          body = await res.clone().json();
-        } else {
-          const blob = await res.clone().blob();
-          body = await convertBlobToBase64(blob);
-        }
-      } catch (e) {
-        body = await res.clone().text();
-      }
-      const data = {
-        headers: Object.fromEntries(res.headers),
+      const res = await fetch(url, normalizedOptions);
+      const contentType = res.headers.get("content-type") || "";
+      const resolvedResponseType = responseType && responseType !== "auto" ? responseType : isJsonContentType(contentType) ? "json" : isFormDataContentType(contentType) ? "formData" : isTextContentType(contentType) ? "text" : hasEmptyResponseBody(res) ? "empty" : "blob";
+      const { body, bodyEncoding, bodyType } = await buildResponseBody(res, resolvedResponseType, contentType);
+      const headerEntries = [...res.headers.entries()];
+      return {
+        __type: SERIALIZED_FETCH_RESPONSE,
+        body,
+        bodyEncoding,
+        bodyType,
+        contentType,
+        headerEntries,
+        headers: Object.fromEntries(headerEntries),
         ok: res.ok,
         redirected: res.redirected,
+        responseType: resolvedResponseType,
         status: res.status,
         statusText: res.statusText,
         type: res.type,
-        url: res.url,
-        body
+        url: res.url
       };
-      return data;
     } catch (e) {
       console.log("Fetch failed:", e);
-      return null;
+      return {
+        __type: SERIALIZED_FETCH_RESPONSE,
+        body: null,
+        bodyEncoding: "empty",
+        bodyType: "error",
+        contentType: "",
+        error: {
+          message: e?.message || "Unknown fetch error",
+          name: e?.name || "Error"
+        },
+        headerEntries: [],
+        headers: {},
+        ok: false,
+        redirected: false,
+        responseType: "error",
+        status: 0,
+        statusText: "",
+        type: "error",
+        url: String(url || "")
+      };
     }
   }
-  var isFirefox, browserApi, CACHED, Storage, runScriptInCurrentTab, runScriptInTab, mergeObject, sleep, getFBAIODashboard, convertBlobToBase64;
-  var init_utils = __esm({
-    "scripts/utils/index.js"() {
-      isFirefox = typeof browser !== "undefined" && browser.runtime;
-      browserApi = isFirefox ? browser : chrome;
-      CACHED = {
-        userID: null
-      };
-      Storage = {
-        set: async (key, value) => {
-          await browserApi.storage.local.set({ [key]: value });
-          return value;
-        },
-        get: async (key, defaultValue) => {
-          let result = await browserApi.storage.local.get([key]);
-          return result[key] || defaultValue;
-        },
-        remove: async (key) => {
-          return await browserApi.storage.local.remove(key);
-        }
-      };
-      runScriptInCurrentTab = async (func, args, world = "MAIN") => {
-        const tab = await getCurrentTab();
-        return await runScriptInTab({ func, args, target: { tabId: tab.id }, world });
-      };
-      runScriptInTab = async (config = {}) => {
-        return new Promise((resolve, reject) => {
-          browserApi.scripting.executeScript(
-            mergeObject(
-              {
-                world: "MAIN",
-                injectImmediately: true
-              },
-              config
-            ),
-            (injectionResults) => {
-              if (browserApi.runtime.lastError) {
-                console.error(browserApi.runtime.lastError);
-                reject(browserApi.runtime.lastError);
-              } else resolve(injectionResults?.find?.((_) => _.result)?.result);
-            }
-          );
-        });
-      };
-      mergeObject = (...objs) => {
-        let res = {};
-        for (let obj of objs) for (let key in obj) if (obj[key]) res[key] = obj[key];
-        return res;
-      };
-      sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-      getFBAIODashboard = () => {
-        return "https://fb-aio.github.io/entry/?rand=" + Math.random() * 1e4;
-      };
-      convertBlobToBase64 = (blob) => new Promise((resolve) => {
-        const reader = new FileReader();
-        reader.readAsDataURL(blob);
-        reader.onloadend = () => {
-          const base64data = reader.result;
-          resolve(base64data);
-        };
-        reader.onerror = (error) => {
-          console.log("Error: ", error);
-          resolve(null);
-        };
-      });
+  function deserializeFetchResponse(data) {
+    if (!isSerializedFetchResponse(data) || typeof Response === "undefined") {
+      return data;
     }
+    const headers = data.headerEntries || Object.entries(data.headers || {});
+    const init = { headers };
+    if (data.status >= 200 && data.status <= 599) {
+      init.status = data.status;
+    }
+    if (data.statusText) {
+      init.statusText = data.statusText;
+    }
+    switch (data.bodyType) {
+      case "json":
+        return new Response(JSON.stringify(data.body), init);
+      case "text":
+        return new Response(data.body || "", init);
+      case "empty":
+      case "error":
+        return new Response(null, init);
+      default:
+        return new Response(convertDataUrlToBlob(data.body, data.contentType) || null, init);
+    }
+  }
+  var isFirefox, browserApi, CACHED, Storage, runScriptInCurrentTab = async (func, args, world = "MAIN") => {
+    const tab = await getCurrentTab();
+    return await runScriptInTab({ func, args, target: { tabId: tab.id }, world });
+  }, runScriptInTab = async (config = {}) => {
+    return new Promise((resolve, reject) => {
+      browserApi.scripting.executeScript(mergeObject({
+        world: "MAIN",
+        injectImmediately: true
+      }, config), (injectionResults) => {
+        if (browserApi.runtime.lastError) {
+          console.error(browserApi.runtime.lastError);
+          reject(browserApi.runtime.lastError);
+        } else
+          resolve(injectionResults?.find?.((_) => _.result)?.result);
+      });
+    });
+  }, mergeObject = (...objs) => {
+    let res = {};
+    for (let obj of objs)
+      for (let key in obj)
+        if (obj[key])
+          res[key] = obj[key];
+    return res;
+  }, sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms)), getFBAIODashboard = () => {
+    return "https://fbaio.org/";
+  }, FORM_DATA_PREFIX = "fbaio-formData:", SERIALIZED_FETCH_RESPONSE = "fbaio-fetch-response", TEXT_MIME_TYPES, normalizeContentType = (contentType = "") => String(contentType || "").split(";")[0].trim().toLowerCase(), isJsonContentType = (contentType = "") => {
+    const mimeType = normalizeContentType(contentType);
+    return mimeType === "application/json" || mimeType.endsWith("+json");
+  }, isTextContentType = (contentType = "") => {
+    const mimeType = normalizeContentType(contentType);
+    return mimeType.startsWith("text/") || TEXT_MIME_TYPES.includes(mimeType);
+  }, isFormDataContentType = (contentType = "") => {
+    const mimeType = normalizeContentType(contentType);
+    return mimeType === "multipart/form-data" || mimeType === "application/x-www-form-urlencoded";
+  }, hasEmptyResponseBody = (res) => [101, 103, 204, 205, 304].includes(res.status) || (res.headers.get("content-length") || res.headers.get("Content-Length")) === "0", normalizeBodyEntryValue = async (value) => {
+    if (!(value instanceof Blob))
+      return value;
+    return {
+      type: "file",
+      name: value.name || "",
+      mimeType: value.type || "application/octet-stream",
+      size: value.size || 0,
+      value: await convertBlobToBase64(value)
+    };
+  }, serializeFormData = async (formData) => {
+    const entries = [];
+    for (const [key, value] of formData.entries()) {
+      entries.push([key, await normalizeBodyEntryValue(value)]);
+    }
+    return entries;
+  }, buildResponseBody = async (res, responseType, contentType) => {
+    if (responseType === "empty" || hasEmptyResponseBody(res)) {
+      return {
+        body: null,
+        bodyEncoding: "empty",
+        bodyType: "empty"
+      };
+    }
+    switch (responseType) {
+      case "json":
+        return {
+          body: await res.clone().json(),
+          bodyEncoding: "json",
+          bodyType: "json"
+        };
+      case "formData":
+        return {
+          body: await serializeFormData(await res.clone().formData()),
+          bodyEncoding: "form-data",
+          bodyType: "formData"
+        };
+      case "blob":
+      case "arrayBuffer": {
+        const blob = await res.clone().blob();
+        return {
+          body: await convertBlobToBase64(blob),
+          bodyEncoding: "data-url",
+          bodyType: "binary"
+        };
+      }
+      case "text":
+      default:
+        try {
+          if (isJsonContentType(contentType)) {
+            return {
+              body: await res.clone().json(),
+              bodyEncoding: "json",
+              bodyType: "json"
+            };
+          }
+          if (isFormDataContentType(contentType)) {
+            return {
+              body: await serializeFormData(await res.clone().formData()),
+              bodyEncoding: "form-data",
+              bodyType: "formData"
+            };
+          }
+          if (isTextContentType(contentType)) {
+            return {
+              body: await res.clone().text(),
+              bodyEncoding: "text",
+              bodyType: "text"
+            };
+          }
+          const blob = await res.clone().blob();
+          return {
+            body: await convertBlobToBase64(blob),
+            bodyEncoding: "data-url",
+            bodyType: "binary"
+          };
+        } catch (e) {
+          return {
+            body: await res.clone().text(),
+            bodyEncoding: "text",
+            bodyType: "text"
+          };
+        }
+    }
+  }, convertDataUrlToBlob = (dataUrl = "", fallbackMimeType = "") => {
+    if (typeof dataUrl !== "string" || !dataUrl.startsWith("data:")) {
+      return dataUrl;
+    }
+    const [header, encoded = ""] = dataUrl.split(",", 2);
+    const mimeType = header.slice(5).split(";")[0] || fallbackMimeType;
+    const binary = atob(encoded);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0;i < binary.length; i++) {
+      bytes[i] = binary.charCodeAt(i);
+    }
+    return new Blob([bytes], { type: mimeType || "application/octet-stream" });
+  }, normalizeCustomFetchOptions = (options = {}) => {
+    const normalizedOptions = { ...options || {} };
+    const responseType = normalizedOptions.responseType || normalizedOptions.fbaioResponseType || "auto";
+    delete normalizedOptions.responseType;
+    delete normalizedOptions.fbaioResponseType;
+    if (typeof normalizedOptions.body === "string" && normalizedOptions.body.startsWith(FORM_DATA_PREFIX)) {
+      const body = JSON.parse(normalizedOptions.body.slice(FORM_DATA_PREFIX.length));
+      const formData = new FormData;
+      for (const [key, value] of Object.entries(body || {})) {
+        if (Array.isArray(value)) {
+          value.forEach((item) => formData.append(key, item));
+        } else {
+          formData.append(key, value);
+        }
+      }
+      normalizedOptions.body = formData;
+    }
+    return {
+      options: normalizedOptions,
+      responseType
+    };
+  }, convertBlobToBase64 = (blob) => new Promise((resolve) => {
+    const reader = new FileReader;
+    reader.readAsDataURL(blob);
+    reader.onloadend = () => {
+      const base64data = reader.result;
+      resolve(base64data);
+    };
+    reader.onerror = (error) => {
+      console.log("Error: ", error);
+      resolve(null);
+    };
+  });
+  var init_utils = __esm(() => {
+    isFirefox = typeof browser !== "undefined" && browser.runtime;
+    browserApi = isFirefox ? browser : chrome;
+    CACHED = {
+      userID: null
+    };
+    Storage = {
+      set: async (key, value) => {
+        await browserApi.storage.local.set({ [key]: value });
+        return value;
+      },
+      get: async (key, defaultValue) => {
+        let result = await browserApi.storage.local.get([key]);
+        return result[key] || defaultValue;
+      },
+      remove: async (key) => {
+        return await browserApi.storage.local.remove(key);
+      }
+    };
+    TEXT_MIME_TYPES = [
+      "application/graphql-response+json",
+      "application/javascript",
+      "application/ld+json",
+      "application/problem+json",
+      "application/sql",
+      "application/xml",
+      "application/x-www-form-urlencoded",
+      "application/xhtml+xml",
+      "image/svg+xml"
+    ];
   });
 
   // scripts/content/helper/helper.js
-  var helper_exports = {};
-  __export(helper_exports, {
-    closest: () => closest,
-    createTrustedHtml: () => createTrustedHtml,
-    createTrustedScript: () => createTrustedScript,
-    deepFind: () => deepFind,
-    downloadData: () => downloadData,
-    downloadUrl: () => downloadUrl,
-    executeScript: () => executeScript,
-    getExtStorage: () => getExtStorage,
-    getFBAIODashboard: () => getFBAIODashboard2,
-    getNumberFormatter: () => getNumberFormatter,
-    getTrustedPolicy: () => getTrustedPolicy,
-    getURL: () => getURL,
-    injectCssCode: () => injectCssCode,
-    injectCssFile: () => injectCssFile,
-    injectScriptSrc: () => injectScriptSrc,
-    injectScriptSrcAsync: () => injectScriptSrcAsync,
-    loadingFullScreen: () => loadingFullScreen,
-    notify: () => notify,
-    onElementRemoved: () => onElementRemoved,
-    onElementsAdded: () => onElementsAdded,
-    parseSafe: () => parseSafe,
-    runInBackground: () => runInBackground,
-    runInContentScript: () => runInContentScript,
-    sanitizeName: () => sanitizeName,
-    sendToContentScript: () => sendToContentScript,
+  var exports_helper = {};
+  __export(exports_helper, {
+    sleep: () => sleep2,
     setExtStorage: () => setExtStorage,
-    sleep: () => sleep2
+    sendToContentScript: () => sendToContentScript,
+    sanitizeName: () => sanitizeName,
+    runInContentScript: () => runInContentScript,
+    runInBackground: () => runInBackground,
+    parseSafe: () => parseSafe,
+    onElementsAdded: () => onElementsAdded,
+    onElementRemoved: () => onElementRemoved,
+    notify: () => notify,
+    loadingFullScreen: () => loadingFullScreen,
+    injectScriptSrcAsync: () => injectScriptSrcAsync,
+    injectScriptSrc: () => injectScriptSrc,
+    injectCssFile: () => injectCssFile,
+    injectCssCode: () => injectCssCode,
+    getURL: () => getURL,
+    getTrustedPolicy: () => getTrustedPolicy,
+    getNumberFormatter: () => getNumberFormatter,
+    getFBAIODashboard: () => getFBAIODashboard2,
+    getExtStorage: () => getExtStorage,
+    executeScript: () => executeScript,
+    downloadUrl: () => downloadUrl,
+    downloadData: () => downloadData,
+    deepFind: () => deepFind,
+    createTrustedScript: () => createTrustedScript,
+    createTrustedHtml: () => createTrustedHtml,
+    closest: () => closest
   });
   function sendToContentScript(event, data) {
     return new Promise((resolve, reject) => {
@@ -232,11 +399,9 @@
       window.addEventListener(listenerKey, (evt) => resolve(evt.detail.data), {
         once: true
       });
-      window.dispatchEvent(
-        new CustomEvent("aio-pagescript-sendto-contentscript", {
-          detail: { event, data, uuid }
-        })
-      );
+      window.dispatchEvent(new CustomEvent("aio-pagescript-sendto-contentscript", {
+        detail: { event, data, uuid }
+      }));
     });
   }
   function runInContentScript(fnPath, params) {
@@ -266,11 +431,12 @@
     y = window.innerHeight - 100,
     align = "center",
     styleText = "",
-    duration = 3e3,
+    duration = 3000,
     id = "aio_notify_div"
   } = {}) {
     let exist = document.getElementById(id);
-    if (exist) exist.remove();
+    if (exist)
+      exist.remove();
     let div = document.createElement("div");
     div.id = id;
     div.style.cssText = `
@@ -297,13 +463,14 @@
             div.style.opacity = 0;
             div.style.top = `${y - 50}px`;
           }
-        }, _time - 1e3),
+        }, _time - 1000),
         setTimeout(() => {
           div?.remove();
         }, _time)
       ];
     }
-    if (duration > 0) closeAfter(duration);
+    if (duration > 0)
+      closeAfter(duration);
     return {
       closeAfter,
       remove() {
@@ -317,7 +484,8 @@
       setText(text, duration2) {
         if (div) {
           div.innerHTML = createTrustedHtml(text);
-          if (duration2) closeAfter(duration2);
+          if (duration2)
+            closeAfter(duration2);
           return true;
         }
         return false;
@@ -363,13 +531,9 @@
         locale = navigator.language;
       } else {
         try {
-          locale = new URL(
-            Array.from(document.querySelectorAll("head > link[rel='search']"))?.find((n) => n?.getAttribute("href")?.includes("?locale="))?.getAttribute("href")
-          )?.searchParams?.get("locale");
+          locale = new URL(Array.from(document.querySelectorAll("head > link[rel='search']"))?.find((n) => n?.getAttribute("href")?.includes("?locale="))?.getAttribute("href"))?.searchParams?.get("locale");
         } catch {
-          console.log(
-            "Cannot find browser locale. Use en as default for number formatting."
-          );
+          console.log("Cannot find browser locale. Use en as default for number formatting.");
           locale = "en";
         }
       }
@@ -404,17 +568,21 @@
     let nodes = document.querySelectorAll(selector);
     if (nodes?.length) {
       callback(nodes);
-      if (once) return;
+      if (once)
+        return;
     }
     const observer = new MutationObserver((mutations) => {
       mutations.forEach((mutation) => {
-        if (!mutation.addedNodes) return;
+        if (!mutation.addedNodes)
+          return;
         for (let node of mutation.addedNodes) {
-          if (node.nodeType != 1) continue;
+          if (node.nodeType != 1)
+            continue;
           let n = node.matches(selector) ? [node] : Array.from(node.querySelectorAll(selector));
           if (n?.length) {
             callback(n);
-            if (once) observer.disconnect();
+            if (once)
+              observer.disconnect();
           }
         }
       });
@@ -428,7 +596,8 @@
     return () => observer.disconnect();
   }
   function onElementRemoved(element, callback) {
-    if (!element.parentElement) throw new Error("element must have parent");
+    if (!element.parentElement)
+      throw new Error("element must have parent");
     let observer = new MutationObserver(function(mutations) {
       mutations.forEach(function(mutation) {
         if (mutation.type === "childList") {
@@ -451,15 +620,18 @@
   function closest(element, selector) {
     let el = element;
     while (el !== null) {
-      if (el.matches(selector)) return el;
+      if (el.matches(selector))
+        return el;
       let found = el.querySelector(selector);
-      if (found) return found;
+      if (found)
+        return found;
       el = el.parentElement;
     }
     return el;
   }
   function deepFind(obj, path, once = true, exactPath = false) {
-    if (!obj || typeof obj !== "object") return once ? null : [];
+    if (!obj || typeof obj !== "object")
+      return once ? null : [];
     const paths = Array.isArray(path) ? path : path.split(".");
     const result = [];
     const stack = [
@@ -474,7 +646,8 @@
       const { currentObj, currentPathIndex, correctPath } = stack.pop();
       if (currentPathIndex === paths.length) {
         const res = !exactPath ? currentObj : correctPath ? currentObj : null;
-        if (once) return res;
+        if (once)
+          return res;
         result.push(res);
         continue;
       }
@@ -550,15 +723,17 @@
     const windowsReservedRe = /^(con|prn|aux|nul|com[0-9]|lpt[0-9])(\..*)?$/i;
     const windowsTrailingRe = /[\. ]+$/;
     if (modifyIfPosible) {
-      name = name.replaceAll("<", "\u2039").replaceAll(">", "\u203A").replaceAll(":", "\u2236").replaceAll('"', "\u2033").replaceAll("/", "\u2215").replaceAll("\\", "\u2216").replaceAll("|", "\xA6").replaceAll("?", "\xBF");
+      name = name.replaceAll("<", "‹").replaceAll(">", "›").replaceAll(":", "∶").replaceAll('"', "″").replaceAll("/", "∕").replaceAll("\\", "∖").replaceAll("|", "¦").replaceAll("?", "¿");
     }
     const sanitized = name.replace(illegalRe, replacement).replace(controlRe, replacement).replace(reservedRe, replacement).replace(windowsReservedRe, replacement).replace(windowsTrailingRe, replacement);
     return sanitized;
   }
   function injectCssCode(code) {
     let css = document.createElement("style");
-    if ("textContent" in css) css.textContent = code;
-    else css.innerText = code;
+    if ("textContent" in css)
+      css.textContent = code;
+    else
+      css.innerText = code;
     (document.head || document.documentElement).appendChild(css);
     return css;
   }
@@ -567,7 +742,8 @@
     css.setAttribute("rel", "stylesheet");
     css.setAttribute("type", "text/css");
     css.setAttribute("href", filePath);
-    if (id) css.setAttribute("id", id);
+    if (id)
+      css.setAttribute("id", id);
     (document.head || document.documentElement).appendChild(css);
     return css;
   }
@@ -619,14 +795,11 @@
       });
     });
   }
-  var numberFormatCached, getFBAIODashboard2;
-  var init_helper = __esm({
-    "scripts/content/helper/helper.js"() {
-      numberFormatCached = {};
-      getFBAIODashboard2 = () => {
-        return "https://fb-aio.github.io/entry/?rand=" + Math.random() * 1e4;
-      };
-    }
+  var numberFormatCached, getFBAIODashboard2 = () => {
+    return "https://fb-aio.github.io/entry/?rand=" + Math.random() * 1e4;
+  };
+  var init_helper = __esm(() => {
+    numberFormatCached = {};
   });
 
   // scripts/content/listener.js
@@ -636,8 +809,8 @@
       const { from, origin, uuid, fnPath, params } = event.data || {};
       if (uuid && from === "fbaio" && (!origin || origin === location.origin)) {
         console.log("Message received:", event);
-        const utils = await Promise.resolve().then(() => (init_utils(), utils_exports));
-        const helpers = await Promise.resolve().then(() => (init_helper(), helper_exports));
+        const utils = await Promise.resolve().then(() => (init_utils(), exports_utils));
+        const helpers = await Promise.resolve().then(() => (init_helper(), exports_helper));
         const GLOBAL = {
           window,
           utils,
