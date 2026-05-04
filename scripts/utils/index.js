@@ -194,6 +194,38 @@ const serializeFormData = async (formData) => {
   return entries;
 };
 
+const buildTextResponseBody = async (res) => ({
+  body: await res.clone().text(),
+  bodyEncoding: "text",
+  bodyType: "text",
+});
+
+const buildJsonResponseBody = async (res) => {
+  try {
+    return {
+      body: await res.clone().json(),
+      bodyEncoding: "json",
+      bodyType: "json",
+    };
+  } catch (e) {
+    console.log("Cannot parse response JSON", e);
+    return buildTextResponseBody(res);
+  }
+};
+
+const buildFormDataResponseBody = async (res) => {
+  try {
+    return {
+      body: await serializeFormData(await res.clone().formData()),
+      bodyEncoding: "form-data",
+      bodyType: "formData",
+    };
+  } catch (e) {
+    console.log("Cannot parse response form data", e);
+    return buildTextResponseBody(res);
+  }
+};
+
 const buildResponseBody = async (res, responseType, contentType) => {
   if (responseType === "empty" || hasEmptyResponseBody(res)) {
     return {
@@ -205,18 +237,10 @@ const buildResponseBody = async (res, responseType, contentType) => {
 
   switch (responseType) {
     case "json":
-      return {
-        body: await res.clone().json(),
-        bodyEncoding: "json",
-        bodyType: "json",
-      };
+      return buildJsonResponseBody(res);
 
     case "formData":
-      return {
-        body: await serializeFormData(await res.clone().formData()),
-        bodyEncoding: "form-data",
-        bodyType: "formData",
-      };
+      return buildFormDataResponseBody(res);
 
     case "blob":
     case "arrayBuffer": {
@@ -232,27 +256,15 @@ const buildResponseBody = async (res, responseType, contentType) => {
     default:
       try {
         if (isJsonContentType(contentType)) {
-          return {
-            body: await res.clone().json(),
-            bodyEncoding: "json",
-            bodyType: "json",
-          };
+          return buildJsonResponseBody(res);
         }
 
         if (isFormDataContentType(contentType)) {
-          return {
-            body: await serializeFormData(await res.clone().formData()),
-            bodyEncoding: "form-data",
-            bodyType: "formData",
-          };
+          return buildFormDataResponseBody(res);
         }
 
         if (isTextContentType(contentType)) {
-          return {
-            body: await res.clone().text(),
-            bodyEncoding: "text",
-            bodyType: "text",
-          };
+          return buildTextResponseBody(res);
         }
 
         const blob = await res.clone().blob();
@@ -262,13 +274,18 @@ const buildResponseBody = async (res, responseType, contentType) => {
           bodyType: "binary",
         };
       } catch (e) {
-        return {
-          body: await res.clone().text(),
-          bodyEncoding: "text",
-          bodyType: "text",
-        };
+        return buildTextResponseBody(res);
       }
   }
+};
+
+const getResponseType = (res, responseType, contentType) => {
+  if (responseType && responseType !== "auto") return responseType;
+  if (hasEmptyResponseBody(res)) return "empty";
+  if (isJsonContentType(contentType)) return "json";
+  if (isFormDataContentType(contentType)) return "formData";
+  if (isTextContentType(contentType)) return "text";
+  return "blob";
 };
 
 const convertDataUrlToBlob = (dataUrl = "", fallbackMimeType = "") => {
@@ -278,14 +295,49 @@ const convertDataUrlToBlob = (dataUrl = "", fallbackMimeType = "") => {
 
   const [header, encoded = ""] = dataUrl.split(",", 2);
   const mimeType = header.slice(5).split(";")[0] || fallbackMimeType;
-  const binary = atob(encoded);
-  const bytes = new Uint8Array(binary.length);
+  const isBase64 = header.includes(";base64");
+  const decoded = isBase64 ? atob(encoded) : decodeURIComponent(encoded);
+  const bytes = new Uint8Array(decoded.length);
 
-  for (let i = 0; i < binary.length; i++) {
-    bytes[i] = binary.charCodeAt(i);
+  for (let i = 0; i < decoded.length; i++) {
+    bytes[i] = decoded.charCodeAt(i);
   }
 
   return new Blob([bytes], { type: mimeType || "application/octet-stream" });
+};
+
+const isSerializedFileValue = (value) =>
+  value?.type === "file" && typeof value.value === "string";
+
+const normalizeFormDataRequestValue = (value) => {
+  if (!isSerializedFileValue(value)) return value;
+
+  const blob = convertDataUrlToBlob(value.value, value.mimeType);
+  if (!(typeof Blob !== "undefined" && blob instanceof Blob)) return value.value;
+
+  if (value.name && typeof File !== "undefined") {
+    return new File([blob], value.name, {
+      type: value.mimeType || blob.type || "application/octet-stream",
+    });
+  }
+
+  return blob;
+};
+
+const appendFormDataValue = (formData, key, value) => {
+  const normalizedValue = normalizeFormDataRequestValue(value);
+
+  if (
+    typeof Blob !== "undefined" &&
+    normalizedValue instanceof Blob &&
+    value?.name &&
+    !(typeof File !== "undefined" && normalizedValue instanceof File)
+  ) {
+    formData.append(key, normalizedValue, value.name);
+    return;
+  }
+
+  formData.append(key, normalizedValue);
 };
 
 const normalizeCustomFetchOptions = (options = {}) => {
@@ -306,9 +358,9 @@ const normalizeCustomFetchOptions = (options = {}) => {
     const formData = new FormData();
     for (const [key, value] of Object.entries(body || {})) {
       if (Array.isArray(value)) {
-        value.forEach((item) => formData.append(key, item));
+        value.forEach((item) => appendFormDataValue(formData, key, item));
       } else {
-        formData.append(key, value);
+        appendFormDataValue(formData, key, value);
       }
     }
     normalizedOptions.body = formData;
@@ -331,18 +383,7 @@ export async function customFetch(url, options) {
   try {
     const res = await fetch(url, normalizedOptions);
     const contentType = res.headers.get("content-type") || "";
-    const resolvedResponseType =
-      responseType && responseType !== "auto"
-        ? responseType
-        : isJsonContentType(contentType)
-        ? "json"
-        : isFormDataContentType(contentType)
-        ? "formData"
-        : isTextContentType(contentType)
-        ? "text"
-        : hasEmptyResponseBody(res)
-        ? "empty"
-        : "blob";
+    const resolvedResponseType = getResponseType(res, responseType, contentType);
     const { body, bodyEncoding, bodyType } = await buildResponseBody(
       res,
       resolvedResponseType,
@@ -426,16 +467,40 @@ export function deserializeFetchResponse(data) {
   }
 }
 
-export const convertBlobToBase64 = (blob) =>
-  new Promise((resolve) => {
-    const reader = new FileReader();
-    reader.readAsDataURL(blob);
-    reader.onloadend = () => {
-      const base64data = reader.result;
-      resolve(base64data);
-    };
-    reader.onerror = (error) => {
-      console.log("Error: ", error);
-      resolve(null);
-    };
-  });
+const arrayBufferToBase64 = (buffer) => {
+  const bytes = new Uint8Array(buffer);
+  let binary = "";
+
+  for (let i = 0; i < bytes.length; i += 0x8000) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+  }
+
+  return btoa(binary);
+};
+
+export const convertBlobToBase64 = async (blob) => {
+  try {
+    if (!blob) return null;
+
+    if (typeof FileReader !== "undefined") {
+      return await new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(blob);
+        reader.onloadend = () => resolve(reader.result);
+        reader.onerror = (error) => {
+          console.log("Error: ", error);
+          resolve(null);
+        };
+      });
+    }
+
+    if (typeof blob.arrayBuffer === "function") {
+      const base64data = arrayBufferToBase64(await blob.arrayBuffer());
+      return `data:${blob.type || "application/octet-stream"};base64,${base64data}`;
+    }
+  } catch (error) {
+    console.log("Error: ", error);
+  }
+
+  return null;
+};
