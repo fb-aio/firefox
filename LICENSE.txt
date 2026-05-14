@@ -1,9 +1,9 @@
-Copyright (c) 2024-present, JUNO_OKYO (J2TEAM)
+Copyright (c) 2026-present, HOANG TRAN (FB AIO)
 All Rights Reserved.
 PROPRIETARY AND CONFIDENTIAL
 
 This source code and all associated files are the proprietary and
-confidential property of JUNO_OKYO (J2TEAM). Unauthorized copying,
+confidential property of HOANG TRAN (FB AIO). Unauthorized copying,
 modification, distribution, public display, public performance, or
 use of this software, in whole or in part, via any medium, is
 strictly prohibited without the express prior written permission

@@ -1,0 +1,1 @@
+(()=>{console.log("FB AIO: Insta right-click images ENABLED");let e=document.createElement("style");e.textContent='div:has(> div > img[style*="object-fit"]) > div:empty { display: none !important; }',(document.head||document.documentElement)?.appendChild?.(e)})();
